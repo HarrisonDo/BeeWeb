@@ -12,9 +12,10 @@ The page does not start or manage the backend. The backend owns model configurat
 
 ## Files
 
-- `demo.html`: complete standalone frontend.
+- `demo.html`: page structure and entry file.
+- `styles.css`: frontend style file.
+- `app.js`: frontend interaction logic.
 - `WS_BACKEND_TEMPLATE.md`: WebSocket request/response templates for backend alignment.
-- `CODEX53_DEVELOPMENT.md`: longer development notes for future Codex work.
 
 ## Usage
 
@@ -45,4 +46,3 @@ Plain text mode is the compatibility mode for the current backend. JSON mode is 
 ## Backend Contract
 
 See `WS_BACKEND_TEMPLATE.md`.
-
