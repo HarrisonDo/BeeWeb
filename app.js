@@ -5,10 +5,9 @@ let ws = null;
 let connected = false;
 let sessions = [];
 let activeSessionId = null;
-let currentAssistantMessage = null;
+let pendingTurns = new Map();
 
 const wsUrlInput = document.getElementById('wsUrl');
-const sendModeInput = document.getElementById('sendMode');
 const connectBtn = document.getElementById('connectBtn');
 const disconnectBtn = document.getElementById('disconnectBtn');
 const statusLabel = document.getElementById('statusLabel');
@@ -68,7 +67,7 @@ function createSession(render = true) {
     };
     sessions.unshift(session);
     activeSessionId = session.id;
-    currentAssistantMessage = null;
+    pendingTurns.clear();
     saveSessions();
     if (render) renderAll();
     return session;
@@ -102,45 +101,66 @@ function addMessage(role, content, extra = {}) {
     return message;
 }
 
-function appendAssistantContent(text) {
+function getLatestPendingMessageId() {
+    const ids = Array.from(pendingTurns.keys());
+    return ids.length ? ids[ids.length - 1] : null;
+}
+
+function ensureAssistantMessage(messageId) {
     const session = getActiveSession() || createSession(false);
-    if (!currentAssistantMessage) {
-        currentAssistantMessage = {
+    const resolvedMessageId = messageId || getLatestPendingMessageId() || makeId();
+    let assistant = session.messages.find((message) => (
+        message.role === 'assistant' &&
+        message.messageId === resolvedMessageId
+    ));
+
+    if (!assistant) {
+        assistant = {
             id: makeId(),
             role: 'assistant',
+            messageId: resolvedMessageId,
             content: '',
             think: '',
+            status: 'loading',
             time: nowTime()
         };
-        session.messages.push(currentAssistantMessage);
+        session.messages.push(assistant);
     }
-    currentAssistantMessage.content += text || '';
+
+    pendingTurns.set(resolvedMessageId, assistant.id);
+    return { session, assistant, messageId: resolvedMessageId };
+}
+
+function appendAssistantContent(messageId, text) {
+    const { session, assistant } = ensureAssistantMessage(messageId);
+    assistant.content += text || '';
+    assistant.status = 'loading';
     touchSession(session);
     saveSessions();
     renderAll();
 }
 
-function appendAssistantThink(text) {
-    const session = getActiveSession() || createSession(false);
-    if (!currentAssistantMessage) {
-        currentAssistantMessage = {
-            id: makeId(),
-            role: 'assistant',
-            content: '',
-            think: '',
-            time: nowTime()
-        };
-        session.messages.push(currentAssistantMessage);
-    }
-    currentAssistantMessage.think = `${currentAssistantMessage.think || ''}${text || ''}`;
+function appendAssistantThink(messageId, text) {
+    const { session, assistant } = ensureAssistantMessage(messageId);
+    assistant.think = `${assistant.think || ''}${text || ''}`;
+    assistant.status = 'loading';
     touchSession(session);
     saveSessions();
     renderAll();
 }
 
-function finishAssistantMessage() {
-    currentAssistantMessage = null;
-    stopBtn.disabled = true;
+function finishAssistantMessage(messageId, status = 'done') {
+    const resolvedMessageId = messageId || getLatestPendingMessageId();
+    const session = getActiveSession();
+    if (session && resolvedMessageId) {
+        const assistant = session.messages.find((message) => (
+            message.role === 'assistant' &&
+            message.messageId === resolvedMessageId
+        ));
+        if (assistant) assistant.status = status;
+    }
+    if (resolvedMessageId) pendingTurns.delete(resolvedMessageId);
+    stopBtn.disabled = !connected || pendingTurns.size === 0;
     saveSessions();
     renderAll();
 }
@@ -150,13 +170,41 @@ function normalizePayload(msg) {
     return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
 }
 
+function requestHistory() {
+    if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const session = getActiveSession() || createSession(false);
+    ws.send(JSON.stringify({
+        type: 'history_request',
+        sessionId: session.id
+    }));
+}
+
+function applyHistory(msg) {
+    const session = getActiveSession() || createSession(false);
+    const records = Array.isArray(msg.messages) ? msg.messages : [];
+
+    session.messages = records.map((item) => ({
+        id: item.id || makeId(),
+        role: item.role || 'assistant',
+        messageId: item.messageId || item.turnId || item.requestId || makeId(),
+        content: item.content || item.data || item.text || '',
+        think: item.think || item.statusText || '',
+        status: item.status || 'done',
+        time: item.time || item.createdAt || nowTime()
+    }));
+    session.updatedAt = new Date().toISOString();
+    pendingTurns.clear();
+    saveSessions();
+    renderAll();
+}
+
 function handleServerMessage(raw) {
     let msg = null;
     if (typeof raw === 'string') {
         try {
             msg = JSON.parse(raw);
         } catch (e) {
-            appendAssistantContent(raw);
+            appendAssistantContent(null, raw);
             return;
         }
     }
@@ -164,18 +212,26 @@ function handleServerMessage(raw) {
     if (!msg || typeof msg !== 'object') return;
 
     const type = msg.type || msg.event || msg.role;
+    const messageId = msg.messageId || msg.turnId || msg.requestId || null;
+
+    if (type === 'history') {
+        applyHistory(msg);
+        return;
+    }
+
     if (type === 'content' || type === 'assistant' || type === 'message') {
-        appendAssistantContent(normalizePayload(msg));
+        appendAssistantContent(messageId, normalizePayload(msg));
         return;
     }
 
     if (type === 'think' || type === 'thinking' || type === 'status') {
-        appendAssistantThink(normalizePayload(msg));
+        appendAssistantThink(messageId, normalizePayload(msg));
         return;
     }
 
     if (type === 'tool_call' || type === 'tool') {
         addMessage('tool', JSON.stringify({
+            messageId: messageId || getLatestPendingMessageId(),
             name: msg.name || msg.tool || 'tool',
             args: msg.args || msg.arguments || msg.data || {}
         }, null, 2));
@@ -184,6 +240,7 @@ function handleServerMessage(raw) {
 
     if (type === 'tool_result') {
         addMessage('tool', JSON.stringify({
+            messageId: messageId || getLatestPendingMessageId(),
             ok: msg.ok !== false,
             result: msg.result ?? msg.data ?? msg.content ?? ''
         }, null, 2));
@@ -192,16 +249,16 @@ function handleServerMessage(raw) {
 
     if (type === 'error') {
         addMessage('error', msg.message || normalizePayload(msg) || '服务返回错误');
-        finishAssistantMessage();
+        finishAssistantMessage(messageId, 'error');
         return;
     }
 
     if (type === 'end' || type === 'done' || type === 'finish') {
-        finishAssistantMessage();
+        finishAssistantMessage(messageId, 'done');
         return;
     }
 
-    appendAssistantContent(JSON.stringify(msg, null, 2));
+    appendAssistantContent(messageId, JSON.stringify(msg, null, 2));
 }
 
 function connectWebSocket() {
@@ -223,6 +280,7 @@ function connectWebSocket() {
         setConnected(true);
         localStorage.setItem('agentbee.lastUrl', url);
         addMessage('system', 'WebSocket 连接已建立');
+        requestHistory();
         messageInput.focus();
     };
 
@@ -258,7 +316,7 @@ function setConnected(nextConnected) {
     disconnectBtn.disabled = !connected;
     messageInput.disabled = !connected;
     sendBtn.disabled = !connected;
-    stopBtn.disabled = !connected || !currentAssistantMessage;
+    stopBtn.disabled = !connected || pendingTurns.size === 0;
     wsUrlInput.disabled = connected;
     statusDot.classList.toggle('connected', connected);
     statusLabel.textContent = connected ? '已连接' : '未连接';
@@ -275,26 +333,34 @@ function sendMessage() {
     if (!text) return;
 
     const session = getActiveSession() || createSession(false);
+    const messageId = makeId();
     updateTitleFromMessage(session, text);
-    addMessage('user', text);
+    addMessage('user', text, { messageId });
 
-    const payload = sendModeInput.value === 'json'
-        ? JSON.stringify({ type: 'user_message', sessionId: session.id, message: text })
-        : text;
+    pendingTurns.set(messageId, null);
+    ensureAssistantMessage(messageId);
+
+    const payload = JSON.stringify({
+        type: 'user_message',
+        sessionId: session.id,
+        messageId,
+        message: text,
+        createdAt: new Date().toISOString()
+    });
 
     ws.send(payload);
     messageInput.value = '';
     messageInput.style.height = 'auto';
-    currentAssistantMessage = null;
     stopBtn.disabled = false;
 }
 
 function stopCurrent() {
     if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     const session = getActiveSession();
-    ws.send(JSON.stringify({ type: 'stop', sessionId: session ? session.id : null }));
+    const messageId = getLatestPendingMessageId();
+    ws.send(JSON.stringify({ type: 'stop', sessionId: session ? session.id : null, messageId }));
     addMessage('system', '已发送停止请求');
-    finishAssistantMessage();
+    finishAssistantMessage(messageId, 'stopped');
 }
 
 function clearCurrentSession() {
@@ -303,7 +369,7 @@ function clearCurrentSession() {
     session.messages = [];
     session.title = DEFAULT_TITLE;
     session.updatedAt = new Date().toISOString();
-    currentAssistantMessage = null;
+    pendingTurns.clear();
     saveSessions();
     renderAll();
 }
@@ -316,7 +382,7 @@ function deleteCurrentSession() {
     } else {
         activeSessionId = sessions[0].id;
     }
-    currentAssistantMessage = null;
+    pendingTurns.clear();
     saveSessions();
     renderAll();
 }
@@ -345,7 +411,7 @@ function renderSessions() {
         `;
         btn.addEventListener('click', () => {
             activeSessionId = session.id;
-            currentAssistantMessage = null;
+            pendingTurns.clear();
             renderAll();
         });
         sessionList.appendChild(btn);
@@ -378,10 +444,13 @@ function renderMessages() {
         const think = message.think
             ? `<div class="think">${escapeHtml(message.think)}</div>`
             : '';
+        const content = message.role === 'assistant'
+            ? renderMarkdown(message.content || '')
+            : escapeHtml(message.content || '');
 
         row.innerHTML = `
             <div class="meta">${roleName} · ${message.time || ''}</div>
-            <div class="bubble">${think}${escapeHtml(message.content || '')}</div>
+            <div class="bubble">${think}<div class="markdown-body">${content}</div></div>
         `;
         chatContainer.appendChild(row);
     });
@@ -412,6 +481,104 @@ function formatDate(value) {
     return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function renderMarkdown(markdown) {
+    const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+    const html = [];
+    let paragraph = [];
+    let listType = null;
+    let inCode = false;
+    let codeLines = [];
+
+    function flushParagraph() {
+        if (!paragraph.length) return;
+        html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
+        paragraph = [];
+    }
+
+    function closeList() {
+        if (!listType) return;
+        html.push(`</${listType}>`);
+        listType = null;
+    }
+
+    lines.forEach((line) => {
+        const codeFence = line.match(/^```(.*)$/);
+        if (codeFence) {
+            if (inCode) {
+                html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+                codeLines = [];
+                inCode = false;
+            } else {
+                flushParagraph();
+                closeList();
+                inCode = true;
+            }
+            return;
+        }
+
+        if (inCode) {
+            codeLines.push(line);
+            return;
+        }
+
+        if (!line.trim()) {
+            flushParagraph();
+            closeList();
+            return;
+        }
+
+        const heading = line.match(/^(#{1,3})\s+(.+)$/);
+        if (heading) {
+            flushParagraph();
+            closeList();
+            const level = heading[1].length;
+            html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+            return;
+        }
+
+        const ordered = line.match(/^\s*\d+\.\s+(.+)$/);
+        const unordered = line.match(/^\s*[-*]\s+(.+)$/);
+        if (ordered || unordered) {
+            flushParagraph();
+            const nextType = ordered ? 'ol' : 'ul';
+            if (listType !== nextType) {
+                closeList();
+                listType = nextType;
+                html.push(`<${listType}>`);
+            }
+            html.push(`<li>${renderInlineMarkdown((ordered || unordered)[1])}</li>`);
+            return;
+        }
+
+        const quote = line.match(/^>\s?(.+)$/);
+        if (quote) {
+            flushParagraph();
+            closeList();
+            html.push(`<blockquote>${renderInlineMarkdown(quote[1])}</blockquote>`);
+            return;
+        }
+
+        paragraph.push(line.trim());
+    });
+
+    if (inCode) {
+        html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+    }
+    flushParagraph();
+    closeList();
+
+    return html.join('');
+}
+
+function renderInlineMarkdown(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return html;
+}
+
 function escapeHtml(str) {
     return String(str || '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -439,10 +606,6 @@ wsUrlInput.addEventListener('input', () => {
     updateActiveMeta();
 });
 
-sendModeInput.addEventListener('change', () => {
-    localStorage.setItem('agentbee.sendMode', sendModeInput.value);
-});
-
 connectBtn.addEventListener('click', connectWebSocket);
 disconnectBtn.addEventListener('click', disconnectWebSocket);
 sendBtn.addEventListener('click', sendMessage);
@@ -454,9 +617,7 @@ deleteSessionBtn.addEventListener('click', deleteCurrentSession);
 exportBtn.addEventListener('click', exportCurrentSession);
 
 const lastUrl = localStorage.getItem('agentbee.lastUrl');
-const lastMode = localStorage.getItem('agentbee.sendMode');
 if (lastUrl) wsUrlInput.value = lastUrl;
-if (lastMode) sendModeInput.value = lastMode;
 
 loadSessions();
 renderAll();

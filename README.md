@@ -16,6 +16,8 @@ The page does not start or manage the backend. The backend owns model configurat
 - `styles.css`: frontend style file.
 - `app.js`: frontend interaction logic.
 - `WS_BACKEND_TEMPLATE.md`: WebSocket request/response templates for backend alignment.
+- `BACKEND_REFERENCE_DEMO.md`: backend reference event flow.
+- `docs.md`: current protocol implementation notes.
 
 ## Usage
 
@@ -24,19 +26,20 @@ Open `demo.html` in a browser.
 Default settings:
 
 - WebSocket URL: `ws://192.168.254.10:8686`
-- Send mode: plain text
-
-Plain text mode is the compatibility mode for the current backend. JSON mode is available in the UI for future protocol upgrades.
+- Send mode: JSON
 
 ## Frontend Features
 
 - Editable WebSocket URL.
 - Connect and disconnect controls.
-- Plain text or JSON send mode.
+- JSON-only message sending.
+- `messageId` based streaming response matching.
+- WebSocket history request after connection.
 - Local conversation sessions.
 - Browser-side history persistence through `localStorage`.
 - New, clear, delete, and export session actions.
 - Streaming assistant rendering.
+- Markdown rendering for assistant replies.
 - Thinking/status rendering.
 - Tool call and tool result rendering.
 - Error rendering.
