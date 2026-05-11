@@ -165,18 +165,38 @@ function finishAssistantMessage(messageId, status = 'done') {
     renderAll();
 }
 
+function closeAssistantMessage(messageId) {
+    const resolvedMessageId = messageId || getLatestPendingMessageId();
+    const session = getActiveSession();
+    if (!session || !resolvedMessageId) return;
+
+    session.messages = session.messages.filter((message) => !(
+        message.role === 'assistant' &&
+        message.messageId === resolvedMessageId
+    ));
+    pendingTurns.delete(resolvedMessageId);
+    stopBtn.disabled = !connected || pendingTurns.size === 0;
+    session.updatedAt = new Date().toISOString();
+    saveSessions();
+    renderAll();
+}
+
 function normalizePayload(msg) {
     const data = msg.data ?? msg.text ?? msg.content ?? msg.delta ?? '';
     return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
 }
 
+function sendJson(payload) {
+    ws.send(`${JSON.stringify(payload)}\n`);
+}
+
 function requestHistory() {
     if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     const session = getActiveSession() || createSession(false);
-    ws.send(JSON.stringify({
+    sendJson({
         type: 'history_request',
         sessionId: session.id
-    }));
+    });
 }
 
 function applyHistory(msg) {
@@ -255,6 +275,11 @@ function handleServerMessage(raw) {
 
     if (type === 'end' || type === 'done' || type === 'finish') {
         finishAssistantMessage(messageId, 'done');
+        return;
+    }
+
+    if (type === 'close') {
+        closeAssistantMessage(messageId);
         return;
     }
 
@@ -340,15 +365,15 @@ function sendMessage() {
     pendingTurns.set(messageId, null);
     ensureAssistantMessage(messageId);
 
-    const payload = JSON.stringify({
-        type: 'user_message',
+    const payload = {
+        type: 'text',
         sessionId: session.id,
         messageId,
         message: text,
         createdAt: new Date().toISOString()
-    });
+    };
 
-    ws.send(payload);
+    sendJson(payload);
     messageInput.value = '';
     messageInput.style.height = 'auto';
     stopBtn.disabled = false;
@@ -358,7 +383,7 @@ function stopCurrent() {
     if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     const session = getActiveSession();
     const messageId = getLatestPendingMessageId();
-    ws.send(JSON.stringify({ type: 'stop', sessionId: session ? session.id : null, messageId }));
+    sendJson({ type: 'stop', sessionId: session ? session.id : null, messageId });
     addMessage('system', '已发送停止请求');
     finishAssistantMessage(messageId, 'stopped');
 }

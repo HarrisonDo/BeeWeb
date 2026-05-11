@@ -33,7 +33,7 @@ The frontend now sends JSON only:
 
 ```json
 {
-  "type": "user_message",
+  "type": "text",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
   "message": "用户输入的原始文本",
@@ -52,6 +52,8 @@ The frontend now sends JSON only:
 ```
 
 ## Server To Client
+
+The frontend sends JSON strings ending with one newline character (`\n`).
 
 All server messages should be JSON strings.
 
@@ -165,6 +167,18 @@ Also supported:
 }
 ```
 
+### Close Assistant Display
+
+Use `close` when the frontend should remove the assistant display for a message. This does not remove the user message.
+
+```json
+{
+  "type": "close",
+  "sessionId": "browser-local-session-id",
+  "messageId": "question-message-id"
+}
+```
+
 ### End
 
 ```json
@@ -197,7 +211,7 @@ Client sends:
 
 ```json
 {
-  "type": "user_message",
+  "type": "text",
   "sessionId": "session-1",
   "messageId": "msg-1",
   "message": "用 Markdown 回复一个列表",
@@ -244,4 +258,3 @@ When two questions are running at the same time, return each stream with its own
 ```
 
 The frontend will render A and B into different assistant bubbles.
-

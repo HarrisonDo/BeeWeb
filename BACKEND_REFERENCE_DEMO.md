@@ -8,7 +8,7 @@ The frontend will send:
 
 ```json
 {
-  "type": "history_request",
+  "type": "getHistory",
   "sessionId": "session-id-from-browser"
 }
 ```
@@ -29,13 +29,15 @@ Frontend sends:
 
 ```json
 {
-  "type": "user_message",
+  "type": "text",
   "sessionId": "session-id-from-browser",
   "messageId": "msg-001",
   "message": "请用 Markdown 介绍 BeeWeb",
   "createdAt": "2026-05-11T10:00:00.000Z"
 }
 ```
+
+The actual WebSocket frame payload ends with `\n`.
 
 Backend should stream:
 
@@ -89,7 +91,7 @@ function onMessage(raw, ws) {
     return;
   }
 
-  if (msg.type === "user_message") {
+  if (msg.type === "text") {
     const base = {
       sessionId: msg.sessionId,
       messageId: msg.messageId
@@ -129,3 +131,10 @@ If two user messages are running together, keep their streams separate by `messa
 {"type":"content","sessionId":"s1","messageId":"msg-B","data":"B chunk"}
 ```
 
+## Close Assistant Display
+
+To remove an assistant loading/reply bubble without deleting the user message:
+
+```json
+{"type":"close","sessionId":"s1","messageId":"msg-A"}
+```
