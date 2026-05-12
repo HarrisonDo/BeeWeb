@@ -109,6 +109,8 @@ Alternative content fields supported by the frontend:
 
 ### Thinking Or Status
 
+`think` is rendered as a collapsible thinking block. Long thinking text is collapsed to about three lines by default.
+
 ```json
 {
   "type": "status",
@@ -128,31 +130,42 @@ Also supported:
 }
 ```
 
-### Tool Call
+### Tool Calls
+
+`tool_calls` is rendered inside the related assistant message as a collapsible tool-call block. The frontend reads the display content from `data`.
 
 ```json
 {
-  "type": "tool_call",
+  "type": "tool_calls",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
-  "toolCallId": "tool-call-id",
-  "name": "exec_command",
-  "args": {
-    "cmd": "ls"
-  }
+  "data": [
+    {
+      "id": "155385943",
+      "type": "function",
+      "function": {
+        "name": "tool_fileio/listDirectory",
+        "arguments": "{\"path\":\"D:/Programs\"}"
+      }
+    }
+  ]
 }
 ```
 
 ### Tool Result
+
+`tool_result` is rendered inside the related assistant message as a collapsible tool-result block. The frontend reads the display content from `data`.
 
 ```json
 {
   "type": "tool_result",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
-  "toolCallId": "tool-call-id",
-  "ok": true,
-  "data": "命令输出"
+  "data": {
+    "tool_call_id": "155385943",
+    "function_name": "tool_fileio/listDirectory",
+    "result": "{\"success\":true,\"path\":\"D:/Programs\",\"contents\":[]}"
+  }
 }
 ```
 

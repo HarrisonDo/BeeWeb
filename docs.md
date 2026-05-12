@@ -7,7 +7,9 @@
 - 每个用户问题生成独立 `messageId`。
 - 前端发送 `text` JSON。
 - 前端每条发送到 WS 的 JSON 字符串末尾都会追加一个换行符 `\n`。
-- 后端返回 `content/status/think/tool_call/tool_result/error/end` 时可以带同一个 `messageId`。
+- 后端返回 `content/status/think/tool_calls/tool_result/error/end` 时可以带同一个 `messageId`。
+- `think` 会显示为类似 Codex 的思考块，超过约 3 行时默认折叠。
+- `tool_calls.data` 支持函数调用数组格式，`tool_result.data.result` 支持 JSON 字符串，前端会格式化后显示在同一个 assistant 对话里的独立折叠块中。
 - 后端返回 `close` 时，前端会移除对应 `messageId` 的 assistant 显示，不删除用户消息。
 - 前端按 `messageId` 分流多个并发回答。
 - 如果后端暂时没有返回 `messageId`，前端会落到最近一个 loading 回答里。

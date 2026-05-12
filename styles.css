@@ -349,19 +349,96 @@ button:disabled {
     padding: 0 4px;
 }
 
-.think {
-    margin-bottom: 8px;
-    padding: 8px 10px;
-    color: #b8c0cc;
-    border-left: 2px solid #52647d;
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 0.86rem;
-    white-space: pre-wrap;
-}
-
 .markdown-body {
     min-width: 0;
     white-space: normal;
+}
+
+.fold-card {
+    margin-bottom: 10px;
+    padding: 9px 10px;
+    border: 1px solid rgba(143, 181, 255, 0.16);
+    border-radius: 8px;
+    color: #b8c0cc;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.86rem;
+}
+
+.think-card {
+    border-color: rgba(143, 181, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-call-card {
+    border-color: rgba(216, 159, 69, 0.28);
+    background: rgba(216, 159, 69, 0.1);
+}
+
+.tool-result-card {
+    border-color: rgba(35, 179, 143, 0.24);
+    background: rgba(35, 179, 143, 0.08);
+}
+
+.fold-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 6px;
+    color: #d8e1ee;
+    font-size: 0.78rem;
+}
+
+.fold-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(75, 130, 240, 0.1);
+}
+
+.tool-call-card .fold-dot {
+    background: var(--warn);
+    box-shadow: 0 0 0 4px rgba(216, 159, 69, 0.1);
+}
+
+.tool-result-card .fold-dot {
+    background: var(--accent-2);
+    box-shadow: 0 0 0 4px rgba(35, 179, 143, 0.1);
+}
+
+.fold-toggle {
+    margin-left: auto;
+    padding: 2px 7px;
+    border: 1px solid rgba(143, 181, 255, 0.18);
+    border-radius: 6px;
+    color: #c9d8ef;
+    background: rgba(75, 130, 240, 0.12);
+    font-size: 0.74rem;
+}
+
+.fold-summary {
+    margin-bottom: 6px;
+    color: #edf2f7;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fold-content {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+}
+
+.fold-card.collapsed .fold-content {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
 }
 
 .markdown-body > :first-child {

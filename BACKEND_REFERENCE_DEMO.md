@@ -70,6 +70,37 @@ Backend should stream:
 
 ```json
 {
+  "type": "tool_calls",
+  "sessionId": "session-id-from-browser",
+  "messageId": "msg-001",
+  "data": [
+    {
+      "id": "tool-001",
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "arguments": "{\"path\":\"README.md\"}"
+      }
+    }
+  ]
+}
+```
+
+```json
+{
+  "type": "tool_result",
+  "sessionId": "session-id-from-browser",
+  "messageId": "msg-001",
+  "data": {
+    "tool_call_id": "tool-001",
+    "function_name": "read_file",
+    "result": "README.md content..."
+  }
+}
+```
+
+```json
+{
   "type": "end",
   "sessionId": "session-id-from-browser",
   "messageId": "msg-001"

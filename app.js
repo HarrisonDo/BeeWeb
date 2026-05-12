@@ -6,6 +6,7 @@ let connected = false;
 let sessions = [];
 let activeSessionId = null;
 let pendingTurns = new Map();
+let expandedFoldBlocks = new Set();
 
 const wsUrlInput = document.getElementById('wsUrl');
 const connectBtn = document.getElementById('connectBtn');
@@ -121,6 +122,7 @@ function ensureAssistantMessage(messageId) {
             messageId: resolvedMessageId,
             content: '',
             think: '',
+            toolEvents: [],
             status: 'loading',
             time: nowTime()
         };
@@ -147,6 +149,81 @@ function appendAssistantThink(messageId, text) {
     touchSession(session);
     saveSessions();
     renderAll();
+}
+
+function appendAssistantToolEvent(messageId, kind, msg) {
+    const { session, assistant } = ensureAssistantMessage(messageId);
+    const event = normalizeToolEvent(kind, msg);
+    if (!Array.isArray(assistant.toolEvents)) assistant.toolEvents = [];
+    assistant.toolEvents.push(event);
+    assistant.status = 'loading';
+    touchSession(session);
+    saveSessions();
+    renderAll();
+}
+
+function normalizeToolEvent(kind, msg) {
+    if (kind === 'tool_calls') {
+        const calls = Array.isArray(msg.data) ? msg.data : [msg.data || msg];
+        const primary = calls[0] || {};
+        const fn = primary.function || {};
+        return {
+            id: msg.toolCallId || primary.id || makeId(),
+            kind,
+            name: fn.name || primary.name || msg.name || msg.tool || '',
+            ok: msg.ok,
+            summary: calls.map((call) => {
+                const callFn = call.function || {};
+                return callFn.name || call.name || call.id || 'tool call';
+            }).join(', '),
+            data: calls.map(formatToolCall).join('\n\n'),
+            time: nowTime()
+        };
+    }
+
+    const data = msg.data && typeof msg.data === 'object' ? msg.data : {};
+    return {
+        id: msg.toolCallId || data.tool_call_id || makeId(),
+        kind,
+        name: data.function_name || msg.name || msg.tool || '',
+        ok: msg.ok ?? data.ok,
+        summary: data.function_name || data.tool_call_id || '',
+        data: formatToolResult(data, msg),
+        time: nowTime()
+    };
+}
+
+function formatToolCall(call) {
+    const fn = call.function || {};
+    const details = {
+        id: call.id,
+        type: call.type,
+        name: fn.name || call.name,
+        arguments: parseJsonMaybe(fn.arguments || call.arguments || call.args)
+    };
+    return formatObject(details);
+}
+
+function formatToolResult(data, msg) {
+    const details = {
+        tool_call_id: data.tool_call_id || msg.toolCallId,
+        function_name: data.function_name || msg.name,
+        result: parseJsonMaybe(data.result ?? data.data ?? msg.result ?? msg.content ?? msg.data)
+    };
+    return formatObject(details);
+}
+
+function parseJsonMaybe(value) {
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch (e) {
+        return value;
+    }
+}
+
+function formatObject(value) {
+    return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
 
 function finishAssistantMessage(messageId, status = 'done') {
@@ -209,6 +286,7 @@ function applyHistory(msg) {
         messageId: item.messageId || item.turnId || item.requestId || makeId(),
         content: item.content || item.data || item.text || '',
         think: item.think || item.statusText || '',
+        toolEvents: Array.isArray(item.toolEvents) ? item.toolEvents : [],
         status: item.status || 'done',
         time: item.time || item.createdAt || nowTime()
     }));
@@ -249,21 +327,13 @@ function handleServerMessage(raw) {
         return;
     }
 
-    if (type === 'tool_call' || type === 'tool') {
-        addMessage('tool', JSON.stringify({
-            messageId: messageId || getLatestPendingMessageId(),
-            name: msg.name || msg.tool || 'tool',
-            args: msg.args || msg.arguments || msg.data || {}
-        }, null, 2));
+    if (type === 'tool_calls' || type === 'tool_call' || type === 'tool') {
+        appendAssistantToolEvent(messageId, 'tool_calls', msg);
         return;
     }
 
     if (type === 'tool_result') {
-        addMessage('tool', JSON.stringify({
-            messageId: messageId || getLatestPendingMessageId(),
-            ok: msg.ok !== false,
-            result: msg.result ?? msg.data ?? msg.content ?? ''
-        }, null, 2));
+        appendAssistantToolEvent(messageId, 'tool_result', msg);
         return;
     }
 
@@ -466,21 +536,76 @@ function renderMessages() {
             tool: '工具'
         }[message.role] || message.role;
 
-        const think = message.think
-            ? `<div class="think">${escapeHtml(message.think)}</div>`
-            : '';
+        const think = renderThinkBlock(message);
+        const tools = renderToolBlocks(message);
         const content = message.role === 'assistant'
             ? renderMarkdown(message.content || '')
             : escapeHtml(message.content || '');
 
         row.innerHTML = `
             <div class="meta">${roleName} · ${message.time || ''}</div>
-            <div class="bubble">${think}<div class="markdown-body">${content}</div></div>
+            <div class="bubble">${think}${tools}<div class="markdown-body">${content}</div></div>
         `;
         chatContainer.appendChild(row);
     });
 
     scrollToBottom();
+}
+
+function renderThinkBlock(message) {
+    if (!message.think) return '';
+
+    const thinkId = message.messageId || message.id;
+    const text = String(message.think || '');
+    const blockId = `think-${thinkId}`;
+
+    return renderFoldBlock({
+        id: blockId,
+        className: 'think-card',
+        title: message.status === 'loading' ? '思考中' : '思考过程',
+        text
+    });
+}
+
+function renderToolBlocks(message) {
+    if (!Array.isArray(message.toolEvents) || !message.toolEvents.length) return '';
+
+    return message.toolEvents.map((event, index) => {
+        const blockId = `tool-${message.messageId || message.id}-${event.id || index}`;
+        const title = event.kind === 'tool_result'
+            ? `工具结果${event.ok === false ? ' · 失败' : ''}`
+            : `工具调用${event.name ? ` · ${event.name}` : ''}`;
+
+        return renderFoldBlock({
+            id: blockId,
+            className: event.kind === 'tool_result' ? 'tool-result-card' : 'tool-call-card',
+            title,
+            summary: event.summary || '',
+            text: event.data || ''
+        });
+    }).join('');
+}
+
+function renderFoldBlock({ id, className, title, summary = '', text }) {
+    const shouldCollapse = String(text).split('\n').length > 3 || String(text).length > 180;
+    const isExpanded = expandedFoldBlocks.has(id);
+    const collapsedClass = shouldCollapse && !isExpanded ? ' collapsed' : '';
+    const toggle = shouldCollapse
+        ? `<button class="fold-toggle" data-fold-id="${escapeHtml(id)}">${isExpanded ? '收起' : '展开'}</button>`
+        : '';
+    const summaryHtml = summary ? `<div class="fold-summary">${escapeHtml(summary)}</div>` : '';
+
+    return `
+        <section class="fold-card ${className}${collapsedClass}">
+            <div class="fold-head">
+                <span class="fold-dot"></span>
+                <span>${escapeHtml(title)}</span>
+                ${toggle}
+            </div>
+            ${summaryHtml}
+            <div class="fold-content">${escapeHtml(text)}</div>
+        </section>
+    `;
 }
 
 function renderAll() {
@@ -499,6 +624,21 @@ function updateActiveMeta() {
 function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
+
+chatContainer.addEventListener('click', (event) => {
+    const toggle = event.target.closest('.fold-toggle');
+    if (!toggle) return;
+
+    const blockId = toggle.dataset.foldId;
+    if (!blockId) return;
+
+    if (expandedFoldBlocks.has(blockId)) {
+        expandedFoldBlocks.delete(blockId);
+    } else {
+        expandedFoldBlocks.add(blockId);
+    }
+    renderAll();
+});
 
 function formatDate(value) {
     const date = new Date(value);
