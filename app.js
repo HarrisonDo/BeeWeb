@@ -590,22 +590,31 @@ function renderFoldBlock({ id, className, title, summary = '', text }) {
     const shouldCollapse = String(text).split('\n').length > 3 || String(text).length > 180;
     const isExpanded = expandedFoldBlocks.has(id);
     const collapsedClass = shouldCollapse && !isExpanded ? ' collapsed' : '';
+    const preview = shouldCollapse ? getFoldPreview(summary || text) : '';
     const toggle = shouldCollapse
         ? `<button class="fold-toggle" data-fold-id="${escapeHtml(id)}">${isExpanded ? '收起' : '展开'}</button>`
         : '';
     const summaryHtml = summary ? `<div class="fold-summary">${escapeHtml(summary)}</div>` : '';
+    const previewHtml = preview ? `<span class="fold-preview">${escapeHtml(preview)}</span>` : '';
 
     return `
         <section class="fold-card ${className}${collapsedClass}">
             <div class="fold-head">
                 <span class="fold-dot"></span>
                 <span>${escapeHtml(title)}</span>
+                ${previewHtml}
                 ${toggle}
             </div>
             ${summaryHtml}
             <div class="fold-content">${escapeHtml(text)}</div>
         </section>
     `;
+}
+
+function getFoldPreview(text) {
+    const plain = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!plain) return '';
+    return plain.length > 48 ? `${plain.slice(0, 48)}...` : plain;
 }
 
 function renderAll() {

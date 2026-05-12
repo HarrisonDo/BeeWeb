@@ -408,12 +408,22 @@ button:disabled {
 
 .fold-toggle {
     margin-left: auto;
-    padding: 2px 7px;
-    border: 1px solid rgba(143, 181, 255, 0.18);
-    border-radius: 6px;
-    color: #c9d8ef;
-    background: rgba(75, 130, 240, 0.12);
+    padding: 0;
+    border: 0;
+    color: #b8c6de;
+    background: transparent;
     font-size: 0.74rem;
+    line-height: 1;
+}
+
+.fold-preview {
+    margin-left: auto;
+    max-width: 260px;
+    color: #9fb0c8;
+    font-size: 0.74rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .fold-summary {
@@ -435,10 +445,24 @@ button:disabled {
 }
 
 .fold-card.collapsed .fold-content {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
+    display: none;
+}
+
+.fold-card.collapsed .fold-summary {
+    display: none;
+}
+
+.fold-card.collapsed {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.fold-card.collapsed .fold-head {
+    margin-bottom: 0;
+}
+
+.fold-card:not(.collapsed) .fold-preview {
+    display: none;
 }
 
 .markdown-body > :first-child {
