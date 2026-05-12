@@ -7,6 +7,7 @@ let sessions = [];
 let activeSessionId = null;
 let pendingTurns = new Map();
 let expandedFoldBlocks = new Set();
+let shouldAutoScroll = true;
 
 const wsUrlInput = document.getElementById('wsUrl');
 const connectBtn = document.getElementById('connectBtn');
@@ -515,6 +516,7 @@ function renderSessions() {
 
 function renderMessages() {
     const session = getActiveSession();
+    const keepAtBottom = shouldAutoScroll || isNearBottom();
     chatContainer.innerHTML = '';
 
     if (!session || !session.messages.length) {
@@ -549,7 +551,9 @@ function renderMessages() {
         chatContainer.appendChild(row);
     });
 
-    scrollToBottom();
+    if (keepAtBottom) {
+        scrollToBottom();
+    }
 }
 
 function renderThinkBlock(message) {
@@ -632,6 +636,19 @@ function updateActiveMeta() {
 
 function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    shouldAutoScroll = true;
+    updateScrollButton();
+}
+
+function isNearBottom() {
+    const distance = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight;
+    return distance < 80;
+}
+
+function updateScrollButton() {
+    const nearBottom = isNearBottom();
+    scrollBtn.classList.toggle('attention', !nearBottom);
+    scrollBtn.title = nearBottom ? '已在底部' : '滚动到底部';
 }
 
 chatContainer.addEventListener('click', (event) => {
@@ -769,10 +786,21 @@ messageInput.addEventListener('input', function() {
 });
 
 messageInput.addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    if (event.key !== 'Enter') return;
+
+    if (event.ctrlKey || event.metaKey) {
+        return;
+    }
+
+    if (!event.shiftKey) {
         event.preventDefault();
         sendMessage();
     }
+});
+
+chatContainer.addEventListener('scroll', () => {
+    shouldAutoScroll = isNearBottom();
+    updateScrollButton();
 });
 
 wsUrlInput.addEventListener('input', () => {

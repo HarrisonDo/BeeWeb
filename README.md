@@ -18,6 +18,7 @@ The page does not start or manage the backend. The backend owns model configurat
 - `WS_BACKEND_TEMPLATE.md`: WebSocket request/response templates for backend alignment.
 - `BACKEND_REFERENCE_DEMO.md`: backend reference event flow.
 - `docs.md`: current protocol implementation notes.
+- `UPGRADE_PLAN.md`: future Vue/Vite upgrade plan.
 
 ## Usage
 
@@ -39,12 +40,14 @@ Default settings:
 - Browser-side history persistence through `localStorage`.
 - New, clear, delete, and export session actions.
 - Streaming assistant rendering.
+- Stream output only auto-scrolls while the user is near the bottom.
 - Markdown rendering for assistant replies.
 - Thinking/status rendering.
 - Tool call and tool result rendering.
 - Error rendering.
 - Stop request button.
 - Non-JSON backend response fallback.
+- Enter sends, Ctrl/Cmd+Enter inserts a newline.
 
 ## Backend Contract
 

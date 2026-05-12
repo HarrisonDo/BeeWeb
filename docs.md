@@ -11,6 +11,8 @@
 - `think` 会显示为类似 Codex 的思考块，超过约 3 行时默认折叠。
 - `tool_calls.data` 支持函数调用数组格式，`tool_result.data.result` 支持 JSON 字符串，前端会格式化后显示在同一个 assistant 对话里的独立折叠块中。
 - 后端返回 `close` 时，前端会移除对应 `messageId` 的 assistant 显示，不删除用户消息。
+- 流式输出时，如果用户已经滚动到历史记录位置，前端不会强制滚动到底部。
+- 输入框使用 Enter 发送，Ctrl+Enter 或 Cmd+Enter 换行。
 - 前端按 `messageId` 分流多个并发回答。
 - 如果后端暂时没有返回 `messageId`，前端会落到最近一个 loading 回答里。
 - WS 连接成功后，前端会发送 `history_request`。
