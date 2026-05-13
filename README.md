@@ -1,6 +1,6 @@
 # BeeWeb
 
-BeeWeb is a standalone web chat page for an existing WebSocket agent service.
+BeeWeb is a Vue 3 + Vite + TypeScript frontend for an existing WebSocket agent service.
 
 Current backend:
 
@@ -10,24 +10,31 @@ ws://192.168.254.10:8686
 
 The page does not start or manage the backend. The backend owns model configuration, API keys, instructions, tools, and execution.
 
-## Files
-
-- `demo.html`: page structure and entry file.
-- `styles.css`: frontend style file.
-- `app.js`: frontend interaction logic.
-- `WS_BACKEND_TEMPLATE.md`: WebSocket request/response templates for backend alignment.
-- `BACKEND_REFERENCE_DEMO.md`: backend reference event flow.
-- `docs.md`: current protocol implementation notes.
-- `UPGRADE_PLAN.md`: future Vue/Vite upgrade plan.
-
 ## Usage
 
-Open `demo.html` in a browser.
+Install dependencies and start the Vue dev server:
+
+```bash
+npm install
+npm run dev
+```
 
 Default settings:
 
 - WebSocket URL: `ws://192.168.254.10:8686`
 - Send mode: JSON
+
+## Files
+
+- `src/`: Vue application source.
+- `src/components/`: chat, session, composer, fold-block, and connection UI components.
+- `src/composables/`: session persistence, WebSocket agent flow, and Markdown rendering.
+- `src/protocol/`: WebSocket event types and normalizers.
+- `old/`: archived native HTML/CSS/JS frontend.
+- `WS_BACKEND_TEMPLATE.md`: WebSocket request/response templates for backend alignment.
+- `BACKEND_REFERENCE_DEMO.md`: backend reference event flow.
+- `docs.md`: current protocol implementation notes.
+- `UPGRADE_PLAN.md`: Vue/Vite upgrade notes.
 
 ## Frontend Features
 
@@ -41,7 +48,7 @@ Default settings:
 - New, clear, delete, and export session actions.
 - Streaming assistant rendering.
 - Stream output only auto-scrolls while the user is near the bottom.
-- Markdown rendering for assistant replies.
+- Markdown rendering with sanitization.
 - Thinking/status rendering.
 - Tool call and tool result rendering.
 - Error rendering.
