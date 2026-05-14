@@ -25,6 +25,23 @@ npm install
 npm run dev
 ```
 
+构建生产版本：
+
+```bash
+npm run build
+```
+
+### 发布版本
+
+推送 `v*` 标签会触发 GitHub Actions 自动构建并创建 Release：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Release 附件会包含 `BeeWeb-v0.1.0.zip`，其中包括 `dist/` 和协议说明文档。
+
 默认设置：
 
 - WebSocket URL: `ws://192.168.254.10:8686`
@@ -101,6 +118,23 @@ Install dependencies and start the dev server:
 npm install
 npm run dev
 ```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+### Release
+
+Pushing a `v*` tag triggers GitHub Actions to build the app and create a GitHub Release:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release asset contains `BeeWeb-v0.1.0.zip`, including `dist/` and protocol docs.
 
 Default settings:
 
