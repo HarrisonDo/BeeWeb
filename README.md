@@ -40,7 +40,24 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Release 附件会包含 `BeeWeb-v0.1.0.zip`。解压后可直接部署解压目录，入口是 `index.html`，协议说明文档在 `docs/` 目录。
+Release 附件会包含 `BeeWeb-v0.1.0.zip`。解压后请通过静态文件服务运行解压目录，入口是服务中的 `index.html`，协议说明文档在 `docs/` 目录。
+
+不建议直接双击打开本地 `index.html`。生产包使用 ES module 和静态资源引用，在 `file://` 场景下可能被浏览器限制。推荐使用以下任一方式运行：
+
+- VS Code Live Server。
+- 本地 IIS / nginx / Apache。
+- Node 静态服务，例如：
+
+```bash
+npx serve BeeWeb-v0.1.0
+```
+
+或：
+
+```bash
+cd BeeWeb-v0.1.0
+python -m http.server 8080
+```
 
 默认设置：
 
@@ -134,7 +151,24 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release asset contains `BeeWeb-v0.1.0.zip`. After extraction, deploy the extracted directory directly. The entry file is `index.html`, and protocol docs are in `docs/`.
+The release asset contains `BeeWeb-v0.1.0.zip`. After extraction, serve the extracted directory with a static file server. The entry file is `index.html`, and protocol docs are in `docs/`.
+
+Opening local `index.html` directly is not recommended. The production package uses ES modules and static asset references, which may be restricted under `file://`. Recommended options:
+
+- VS Code Live Server.
+- Local IIS / nginx / Apache.
+- Node static server, for example:
+
+```bash
+npx serve BeeWeb-v0.1.0
+```
+
+Or:
+
+```bash
+cd BeeWeb-v0.1.0
+python -m http.server 8080
+```
 
 Default settings:
 
