@@ -35,12 +35,13 @@ jobs:
           VERSION="${GITHUB_REF_NAME:-manual}"
           PACKAGE_NAME="BeeWeb-${VERSION}"
           mkdir -p "release/${PACKAGE_NAME}"
-          cp -R dist "release/${PACKAGE_NAME}/dist"
+          cp -R dist/. "release/${PACKAGE_NAME}/"
+          mkdir -p "release/${PACKAGE_NAME}/docs"
           cp README.md "release/${PACKAGE_NAME}/README.md"
-          cp WS_BACKEND_TEMPLATE.md "release/${PACKAGE_NAME}/WS_BACKEND_TEMPLATE.md"
-          cp BACKEND_REFERENCE_DEMO.md "release/${PACKAGE_NAME}/BACKEND_REFERENCE_DEMO.md"
-          cp docs.md "release/${PACKAGE_NAME}/docs.md"
-          cp UPGRADE_PLAN.md "release/${PACKAGE_NAME}/UPGRADE_PLAN.md"
+          cp WS_BACKEND_TEMPLATE.md "release/${PACKAGE_NAME}/docs/WS_BACKEND_TEMPLATE.md"
+          cp BACKEND_REFERENCE_DEMO.md "release/${PACKAGE_NAME}/docs/BACKEND_REFERENCE_DEMO.md"
+          cp docs.md "release/${PACKAGE_NAME}/docs/protocol-notes.md"
+          cp UPGRADE_PLAN.md "release/${PACKAGE_NAME}/docs/UPGRADE_PLAN.md"
           cd release
           zip -r "${PACKAGE_NAME}.zip" "${PACKAGE_NAME}"
 
