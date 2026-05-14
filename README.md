@@ -40,7 +40,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Release 附件会包含 `BeeWeb-v0.1.0.zip`，其中包括 `dist/` 和协议说明文档。
+Release 附件会包含 `BeeWeb-v0.1.0.zip`。解压后可直接部署解压目录，入口是 `index.html`，协议说明文档在 `docs/` 目录。
 
 默认设置：
 
@@ -134,7 +134,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release asset contains `BeeWeb-v0.1.0.zip`, including `dist/` and protocol docs.
+The release asset contains `BeeWeb-v0.1.0.zip`. After extraction, deploy the extracted directory directly. The entry file is `index.html`, and protocol docs are in `docs/`.
 
 Default settings:
 
