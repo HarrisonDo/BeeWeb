@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import FoldBlock from './FoldBlock.vue';
+import ToolEventsBlock from './ToolEventsBlock.vue';
 import { useMarkdown } from '../composables/useMarkdown';
 import type { ChatMessage } from '../protocol/types';
 
@@ -8,6 +10,24 @@ const props = defineProps<{
 }>();
 
 const { renderMarkdown } = useMarkdown();
+
+const hasAssistantOutput = computed(() => (
+  Boolean(props.message.content?.trim()) ||
+  Boolean(props.message.think?.trim()) ||
+  Boolean(props.message.toolEvents?.length)
+));
+
+const isWaitingForResponse = computed(() => (
+  props.message.role === 'assistant' &&
+  props.message.status === 'loading' &&
+  !hasAssistantOutput.value
+));
+
+const endedWithoutResponse = computed(() => (
+  props.message.role === 'assistant' &&
+  props.message.status !== 'loading' &&
+  !hasAssistantOutput.value
+));
 
 function roleName(role: ChatMessage['role']) {
   return {
@@ -31,17 +51,26 @@ function roleName(role: ChatMessage['role']) {
         :text="message.think"
       />
 
-      <FoldBlock
-        v-for="(event, index) in message.toolEvents || []"
-        :key="event.id || index"
-        :class-name="event.kind === 'tool_result' ? 'tool-result-card' : 'tool-call-card'"
-        :title="event.kind === 'tool_result' ? 'Tool result' : `Tool call${event.name ? ` · ${event.name}` : ''}`"
-        :summary="event.summary"
-        :text="event.data"
+      <ToolEventsBlock
+        v-if="message.toolEvents?.length"
+        :events="message.toolEvents"
       />
 
+      <div v-if="isWaitingForResponse" class="message-loading" aria-live="polite">
+        <span>Waiting for response</span>
+        <span class="typing-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </div>
+
+      <div v-else-if="endedWithoutResponse" class="message-ended">
+        No response received. Conversation ended.
+      </div>
+
       <div
-        v-if="message.role === 'assistant'"
+        v-else-if="message.role === 'assistant'"
         class="markdown-body"
         v-html="renderMarkdown(message.content || '')"
       ></div>

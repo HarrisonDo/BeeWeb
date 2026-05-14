@@ -9,6 +9,8 @@ import {
 } from '../protocol/normalizers';
 import { makeId, nowTime } from './useSessions';
 
+const NO_RESPONSE_TIMEOUT_MS = 60_000;
+
 interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
   addMessage: (role: ChatMessage['role'], content: string, extra?: Partial<ChatMessage>) => ChatMessage;
@@ -23,6 +25,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   const connected = ref(false);
   const pendingTurns = ref(new Map<string, string | null>());
   const socket = ref<WebSocket | null>(null);
+  const noResponseTimers = new Map<string, number>();
 
   const canSend = computed(() => connected.value && socket.value?.readyState === WebSocket.OPEN);
   const hasPendingTurns = computed(() => pendingTurns.value.size > 0);
@@ -63,6 +66,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     socket.value.onclose = (event) => {
       connected.value = false;
       const reason = event.reason ? `, reason: ${event.reason}` : '';
+      finishAllPendingWithoutResponse();
       options.addMessage('system', `Connection closed. code=${event.code}${reason}`);
       socket.value = null;
     };
@@ -93,6 +97,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     options.addMessage('user', trimmed, { messageId });
     pendingTurns.value.set(messageId, null);
     ensureAssistantMessage(messageId);
+    startNoResponseTimer(messageId);
 
     sendJson({
       type: 'text',
@@ -113,6 +118,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   }
 
   function clearPendingTurns() {
+    clearAllNoResponseTimers();
     pendingTurns.value.clear();
   }
 
@@ -181,6 +187,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   function appendAssistantContent(messageId: string | null, text: string) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
+    clearNoResponseTimer(turn.messageId);
     turn.assistant.content += text || '';
     turn.assistant.status = 'loading';
     options.touchSession(turn.session);
@@ -190,6 +197,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   function appendAssistantThink(messageId: string | null, text: string) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
+    clearNoResponseTimer(turn.messageId);
     turn.assistant.think = `${turn.assistant.think || ''}${text || ''}`;
     turn.assistant.status = 'loading';
     options.touchSession(turn.session);
@@ -199,6 +207,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   function appendAssistantToolEvent(messageId: string | null, kind: 'tool_calls' | 'tool_result', msg: ServerMessage) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
+    clearNoResponseTimer(turn.messageId);
     turn.assistant.toolEvents ||= [];
     turn.assistant.toolEvents.push(normalizeToolEvent(kind, msg, makeId, nowTime));
     turn.assistant.status = 'loading';
@@ -208,19 +217,40 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
 
   function finishAssistantMessage(messageId: string | null, status: 'done' | 'error' | 'stopped') {
     const resolvedMessageId = messageId || getLatestPendingMessageId();
+    if (resolvedMessageId) clearNoResponseTimer(resolvedMessageId);
     const session = options.activeSession();
     if (session && resolvedMessageId) {
       const assistant = session.messages.find((message) => (
         message.role === 'assistant' && message.messageId === resolvedMessageId
       ));
-      if (assistant) assistant.status = status;
+      if (assistant) {
+        assistant.status = status;
+      }
     }
     if (resolvedMessageId) pendingTurns.value.delete(resolvedMessageId);
     options.saveSessions();
   }
 
+  function finishAllPendingWithoutResponse() {
+    const session = options.activeSession();
+    if (!session || !pendingTurns.value.size) return;
+
+    pendingTurns.value.forEach((_, messageId) => {
+      clearNoResponseTimer(messageId);
+      const assistant = session.messages.find((message) => (
+        message.role === 'assistant' && message.messageId === messageId
+      ));
+      if (assistant && !hasAssistantOutput(assistant)) {
+        assistant.status = 'done';
+      }
+    });
+    pendingTurns.value.clear();
+    options.saveSessions();
+  }
+
   function closeAssistantMessage(messageId: string | null) {
     const resolvedMessageId = messageId || getLatestPendingMessageId();
+    if (resolvedMessageId) clearNoResponseTimer(resolvedMessageId);
     const session = options.activeSession();
     if (!session || !resolvedMessageId) return;
 
@@ -245,8 +275,40 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       status: asAssistantStatus(item.status),
       time: asString(item.time) || asString(item.createdAt) || nowTime(),
     }));
+    clearAllNoResponseTimers();
     pendingTurns.value.clear();
     options.replaceMessages(session, messages);
+  }
+
+  function startNoResponseTimer(messageId: string) {
+    clearNoResponseTimer(messageId);
+    const timerId = window.setTimeout(() => {
+      const session = options.activeSession();
+      const assistant = session?.messages.find((message) => (
+        message.role === 'assistant' && message.messageId === messageId
+      ));
+
+      if (assistant && assistant.status === 'loading' && !hasAssistantOutput(assistant)) {
+        assistant.status = 'done';
+        pendingTurns.value.delete(messageId);
+        options.saveSessions();
+      }
+      noResponseTimers.delete(messageId);
+    }, NO_RESPONSE_TIMEOUT_MS);
+
+    noResponseTimers.set(messageId, timerId);
+  }
+
+  function clearNoResponseTimer(messageId: string) {
+    const timerId = noResponseTimers.get(messageId);
+    if (timerId === undefined) return;
+    window.clearTimeout(timerId);
+    noResponseTimers.delete(messageId);
+  }
+
+  function clearAllNoResponseTimers() {
+    noResponseTimers.forEach((timerId) => window.clearTimeout(timerId));
+    noResponseTimers.clear();
   }
 
   function getLatestPendingMessageId(): string | null {
@@ -281,4 +343,12 @@ function asAssistantStatus(value: unknown): ChatMessage['status'] {
   return ['loading', 'done', 'error', 'stopped'].includes(String(value))
     ? (value as ChatMessage['status'])
     : 'done';
+}
+
+function hasAssistantOutput(message: ChatMessage): boolean {
+  return Boolean(
+    message.content?.trim() ||
+    message.think?.trim() ||
+    message.toolEvents?.length,
+  );
 }
