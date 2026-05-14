@@ -6,6 +6,7 @@ import { useMarkdown } from '../composables/useMarkdown';
 import type { ChatMessage } from '../protocol/types';
 
 const props = defineProps<{
+  labels: Record<string, string>;
   message: ChatMessage;
 }>();
 
@@ -31,11 +32,11 @@ const endedWithoutResponse = computed(() => (
 
 function roleName(role: ChatMessage['role']) {
   return {
-    user: 'User',
-    assistant: 'AgentBee',
-    system: 'System',
-    error: 'Error',
-    tool: 'Tool',
+    user: props.labels.roleUser,
+    assistant: props.labels.roleAssistant,
+    system: props.labels.roleSystem,
+    error: props.labels.roleError,
+    tool: props.labels.roleTool,
   }[role] || role;
 }
 </script>
@@ -47,17 +48,20 @@ function roleName(role: ChatMessage['role']) {
       <FoldBlock
         v-if="message.think"
         class-name="think-card"
-        :title="message.status === 'loading' ? 'Thinking' : 'Thinking process'"
+        :expand-label="labels.expand"
+        :collapse-label="labels.collapse"
+        :title="message.status === 'loading' ? labels.thinking : labels.thinkingProcess"
         :text="message.think"
       />
 
       <ToolEventsBlock
         v-if="message.toolEvents?.length"
         :events="message.toolEvents"
+        :labels="labels"
       />
 
       <div v-if="isWaitingForResponse" class="message-loading" aria-live="polite">
-        <span>Waiting for response</span>
+        <span>{{ labels.waitingForResponse }}</span>
         <span class="typing-dots" aria-hidden="true">
           <span></span>
           <span></span>
@@ -66,7 +70,7 @@ function roleName(role: ChatMessage['role']) {
       </div>
 
       <div v-else-if="endedWithoutResponse" class="message-ended">
-        No response received. Conversation ended.
+        {{ labels.noResponseEnded }}
       </div>
 
       <div

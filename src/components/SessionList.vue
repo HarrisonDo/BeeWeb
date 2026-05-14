@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { MessageSquare } from 'lucide-vue-next';
 import type { ChatSession } from '../protocol/types';
 
 defineProps<{
   activeSessionId: string | null;
+  labels: Record<string, string>;
   sessions: ChatSession[];
 }>();
 
@@ -33,8 +35,11 @@ function formatDate(value: string) {
       :title="session.title"
       @click="emit('select', session.id)"
     >
-      <span class="session-title">{{ session.title }}</span>
-      <span class="session-meta">{{ session.messages.length }} items · {{ formatDate(session.updatedAt) }}</span>
+      <span class="session-title">
+        <MessageSquare :size="14" aria-hidden="true" />
+        <span>{{ session.title }}</span>
+      </span>
+      <span class="session-meta">{{ session.messages.length }} {{ labels.items }} · {{ formatDate(session.updatedAt) }}</span>
     </button>
   </div>
 </template>

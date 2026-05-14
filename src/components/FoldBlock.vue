@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue';
 
 const props = withDefaults(defineProps<{
+  collapseLabel: string;
   className?: string;
+  expandLabel: string;
   summary?: string;
   text: string;
   title: string;
@@ -21,7 +23,13 @@ const preview = computed(() => {
 
 <template>
   <section class="fold-card codex-fold" :class="[className, { collapsed: shouldCollapse && !expanded, expanded }]">
-    <button v-if="shouldCollapse" type="button" class="codex-fold-head" @click="expanded = !expanded">
+    <button
+      v-if="shouldCollapse"
+      type="button"
+      class="codex-fold-head"
+      :title="expanded ? collapseLabel : expandLabel"
+      @click="expanded = !expanded"
+    >
       <span class="fold-chevron" aria-hidden="true"></span>
       <span class="codex-fold-title">{{ title }}</span>
       <span class="codex-fold-preview">{{ preview }}</span>

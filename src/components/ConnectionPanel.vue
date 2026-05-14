@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { Link, LogIn, LogOut } from 'lucide-vue-next';
+
 defineProps<{
   connected: boolean;
+  labels: Record<string, string>;
   url: string;
 }>();
 
@@ -14,7 +17,10 @@ const emit = defineEmits<{
 <template>
   <div class="connection">
     <div class="field">
-      <label for="wsUrl">WebSocket URL</label>
+      <label for="wsUrl">
+        <Link :size="14" aria-hidden="true" />
+        <span>{{ labels.wsUrl }}</span>
+      </label>
       <input
         id="wsUrl"
         :value="url"
@@ -25,12 +31,18 @@ const emit = defineEmits<{
       />
     </div>
     <div class="connect-row">
-      <button type="button" class="connect" :disabled="connected" @click="emit('connect')">Connect</button>
-      <button type="button" class="disconnect" :disabled="!connected" @click="emit('disconnect')">Disconnect</button>
+      <button type="button" class="connect icon-text-button" :disabled="connected" @click="emit('connect')">
+        <LogIn :size="16" aria-hidden="true" />
+        <span>{{ labels.connect }}</span>
+      </button>
+      <button type="button" class="disconnect icon-text-button" :disabled="!connected" @click="emit('disconnect')">
+        <LogOut :size="16" aria-hidden="true" />
+        <span>{{ labels.disconnect }}</span>
+      </button>
     </div>
     <div class="status-pill">
       <span class="dot" :class="{ connected }"></span>
-      <span>{{ connected ? 'Connected' : 'Not connected' }}</span>
+      <span>{{ connected ? labels.connected : labels.notConnected }}</span>
     </div>
   </div>
 </template>

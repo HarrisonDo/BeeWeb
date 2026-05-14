@@ -4,6 +4,7 @@ import type { ToolEvent } from '../protocol/types';
 
 const props = defineProps<{
   events: ToolEvent[];
+  labels: Record<string, string>;
 }>();
 
 const expanded = ref(false);
@@ -15,8 +16,8 @@ const groupedEvents = computed(() => {
   const results = props.events.filter((event) => event.kind === 'tool_result');
 
   return [
-    { kind: 'tool_calls' as const, title: 'Tool calls', count: calls.length, events: calls },
-    { kind: 'tool_result' as const, title: 'Tool results', count: results.length, events: results },
+    { kind: 'tool_calls' as const, title: props.labels.toolCalls, count: calls.length, events: calls },
+    { kind: 'tool_result' as const, title: props.labels.toolResults, count: results.length, events: results },
   ].filter((group) => group.count > 0);
 });
 
@@ -28,7 +29,7 @@ const toolNames = computed(() => {
 const summary = computed(() => {
   const total = props.events.length;
   const suffix = toolNames.value.length ? ` · ${toolNames.value.join(', ')}` : '';
-  return `${total} ${total === 1 ? 'event' : 'events'}${suffix}`;
+  return `${total} ${total === 1 ? props.labels.event : props.labels.events}${suffix}`;
 });
 
 function groupIsOpen(kind: ToolEvent['kind']) {
@@ -67,9 +68,14 @@ function eventKey(event: ToolEvent, index: number) {
 
 <template>
   <section class="codex-fold tool-stack" :class="{ expanded }">
-    <button type="button" class="codex-fold-head" @click="expanded = !expanded">
+    <button
+      type="button"
+      class="codex-fold-head"
+      :title="expanded ? labels.collapse : labels.expand"
+      @click="expanded = !expanded"
+    >
       <span class="fold-chevron" aria-hidden="true"></span>
-      <span class="codex-fold-title">Tools</span>
+      <span class="codex-fold-title">{{ labels.tools }}</span>
       <span class="codex-fold-preview">{{ summary }}</span>
     </button>
 
@@ -95,8 +101,8 @@ function eventKey(event: ToolEvent, index: number) {
           >
             <button type="button" class="tool-event-head" @click="toggleEvent(event, index)">
               <span class="tool-status-dot"></span>
-              <span class="tool-event-name">{{ event.name || event.summary || 'Tool event' }}</span>
-              <span v-if="event.ok === false" class="tool-status-label">failed</span>
+              <span class="tool-event-name">{{ event.name || event.summary || labels.toolEvent }}</span>
+              <span v-if="event.ok === false" class="tool-status-label">{{ labels.failed }}</span>
               <span class="tool-event-time">{{ event.time }}</span>
             </button>
             <div v-if="event.summary" class="tool-event-summary">{{ event.summary }}</div>

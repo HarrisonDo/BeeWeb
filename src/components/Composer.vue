@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { SendHorizontal } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 
 defineProps<{
   disabled: boolean;
+  labels: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -42,11 +44,20 @@ function resize() {
       ref="textarea"
       v-model="text"
       rows="1"
-      placeholder="Type a message. Ctrl/Cmd+Enter inserts a newline."
+      :placeholder="labels.composerPlaceholder"
       :disabled="disabled"
       @input="resize"
       @keydown="onKeydown"
     ></textarea>
-    <button type="button" class="send" :disabled="disabled || !text.trim()" @click="submit">Send</button>
+    <button
+      type="button"
+      class="send icon-text-button"
+      :title="labels.send"
+      :disabled="disabled || !text.trim()"
+      @click="submit"
+    >
+      <SendHorizontal :size="17" aria-hidden="true" />
+      <span>{{ labels.send }}</span>
+    </button>
   </footer>
 </template>
