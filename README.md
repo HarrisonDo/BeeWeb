@@ -42,9 +42,9 @@ Default settings:
 - Connect and disconnect controls.
 - JSON-only message sending.
 - `messageId` based streaming response matching.
-- WebSocket history request after connection.
 - Local conversation sessions.
 - Browser-side history persistence through `localStorage`.
+- Automatic local history pruning when browser storage is full, keeping newer conversations/messages first.
 - New, clear, delete, and export session actions.
 - Streaming assistant rendering.
 - Stream output only auto-scrolls while the user is near the bottom.

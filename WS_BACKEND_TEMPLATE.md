@@ -18,7 +18,9 @@ The backend should include the same `messageId` in all streamed events for that 
 
 ### Load History After Connection
 
-The frontend may request backend chat history after the WebSocket connection opens:
+Backend history loading is currently disabled in the Vue frontend. Chat history is stored in browser `localStorage` for now.
+
+The following request shape is kept only for future protocol reference:
 
 ```json
 {

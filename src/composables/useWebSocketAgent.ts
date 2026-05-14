@@ -14,7 +14,6 @@ const NO_RESPONSE_TIMEOUT_MS = 60_000;
 interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
   addMessage: (role: ChatMessage['role'], content: string, extra?: Partial<ChatMessage>) => ChatMessage;
-  replaceMessages: (session: ChatSession, messages: ChatMessage[]) => void;
   saveSessions: () => void;
   touchSession: (session: ChatSession) => void;
   updateTitleFromMessage: (session: ChatSession, text: string) => void;
@@ -52,7 +51,6 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       connected.value = true;
       localStorage.setItem('agentbee.lastUrl', url);
       options.addMessage('system', 'WebSocket connected.');
-      requestHistory();
     };
 
     socket.value.onmessage = (event) => {
@@ -126,12 +124,6 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     socket.value?.send(`${JSON.stringify(payload)}\n`);
   }
 
-  function requestHistory() {
-    const session = options.activeSession();
-    if (!canSend.value || !session) return;
-    sendJson({ type: 'history_request', sessionId: session.id });
-  }
-
   function handleServerMessage(raw: string) {
     const parsed = parseServerMessage(raw);
     if (typeof parsed === 'string') {
@@ -143,7 +135,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     const type = getServerType(msg);
     const messageId = getMessageId(msg);
 
-    if (type === 'history') return applyHistory(msg);
+    if (type === 'history') return;
     if (['content', 'assistant', 'message'].includes(type)) return appendAssistantContent(messageId, normalizePayload(msg));
     if (['think', 'thinking', 'status'].includes(type)) return appendAssistantThink(messageId, normalizePayload(msg));
     if (['tool_calls', 'tool_call', 'tool'].includes(type)) return appendAssistantToolEvent(messageId, 'tool_calls', msg);
@@ -261,25 +253,6 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     options.saveSessions();
   }
 
-  function applyHistory(msg: ServerMessage) {
-    const session = options.activeSession();
-    if (!session) return;
-    const records = Array.isArray(msg.messages) ? msg.messages : [];
-    const messages = records.map((item): ChatMessage => ({
-      id: asString(item.id) || makeId(),
-      role: asChatRole(item.role),
-      messageId: asString(item.messageId) || asString(item.turnId) || asString(item.requestId) || makeId(),
-      content: asString(item.content) || asString(item.data) || asString(item.text) || '',
-      think: asString(item.think) || asString(item.statusText) || '',
-      toolEvents: Array.isArray(item.toolEvents) ? item.toolEvents : [],
-      status: asAssistantStatus(item.status),
-      time: asString(item.time) || asString(item.createdAt) || nowTime(),
-    }));
-    clearAllNoResponseTimers();
-    pendingTurns.value.clear();
-    options.replaceMessages(session, messages);
-  }
-
   function startNoResponseTimer(messageId: string) {
     clearNoResponseTimer(messageId);
     const timerId = window.setTimeout(() => {
@@ -327,22 +300,6 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     stopCurrent,
     wsUrl,
   };
-}
-
-function asString(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-function asChatRole(value: unknown): ChatMessage['role'] {
-  return ['user', 'assistant', 'system', 'error', 'tool'].includes(String(value))
-    ? (value as ChatMessage['role'])
-    : 'assistant';
-}
-
-function asAssistantStatus(value: unknown): ChatMessage['status'] {
-  return ['loading', 'done', 'error', 'stopped'].includes(String(value))
-    ? (value as ChatMessage['status'])
-    : 'done';
 }
 
 function hasAssistantOutput(message: ChatMessage): boolean {

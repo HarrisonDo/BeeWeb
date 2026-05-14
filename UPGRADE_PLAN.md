@@ -64,7 +64,6 @@ src/
 6. Replace the custom Markdown renderer with a library plus sanitization.
 7. Validate against current backend events:
    - `text`
-   - `history_request`
    - `think`
    - `tool_calls`
    - `tool_result`

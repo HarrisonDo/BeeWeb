@@ -3,6 +3,8 @@ import type { ChatMessage, ChatSession, MessageRole } from '../protocol/types';
 
 const STORAGE_KEY = 'agentbee.sessions.v2';
 const DEFAULT_TITLE = 'New conversation';
+const MAX_SAVE_ATTEMPTS = 12;
+const MIN_MESSAGES_PER_SESSION = 6;
 
 export function useSessions() {
   const sessions = ref<ChatSession[]>([]);
@@ -28,7 +30,32 @@ export function useSessions() {
   }
 
   function saveSessions() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.value));
+    let snapshot = normalizeSessionOrder(sessions.value);
+
+    for (let attempt = 0; attempt < MAX_SAVE_ATTEMPTS; attempt += 1) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+        sessions.value = snapshot;
+        if (!sessions.value.some((session) => session.id === activeSessionId.value)) {
+          activeSessionId.value = sessions.value[0]?.id || null;
+        }
+        return;
+      } catch (error) {
+        if (!isStorageQuotaError(error)) {
+          throw error;
+        }
+
+        const pruned = pruneOldestHistory(snapshot, activeSessionId.value);
+        if (pruned === snapshot) {
+          console.warn('BeeWeb local chat history is too large to save even after pruning.');
+          return;
+        }
+        snapshot = pruned;
+      }
+    }
+
+    sessions.value = snapshot;
+    console.warn('BeeWeb local chat history save reached the pruning retry limit.');
   }
 
   function createSession(save = true): ChatSession {
@@ -96,12 +123,6 @@ export function useSessions() {
     saveSessions();
   }
 
-  function replaceMessages(session: ChatSession, messages: ChatMessage[]) {
-    session.messages = messages;
-    session.updatedAt = new Date().toISOString();
-    saveSessions();
-  }
-
   return {
     sessions,
     activeSessionId,
@@ -111,7 +132,6 @@ export function useSessions() {
     createSession,
     deleteCurrentSession,
     loadSessions,
-    replaceMessages,
     saveSessions,
     setActiveSession,
     touchSession,
@@ -130,4 +150,51 @@ export function nowTime(): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function normalizeSessionOrder(items: ChatSession[]): ChatSession[] {
+  return [...items].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+}
+
+function pruneOldestHistory(items: ChatSession[], activeId: string | null): ChatSession[] {
+  const sessionsWithMessages = [...items]
+    .filter((session) => session.messages.length > MIN_MESSAGES_PER_SESSION)
+    .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt));
+
+  const messagePruneTarget = sessionsWithMessages.find((session) => session.id !== activeId)
+    || sessionsWithMessages[0];
+
+  if (messagePruneTarget) {
+    return items.map((session) => {
+      if (session.id !== messagePruneTarget.id) return session;
+      const keepCount = Math.max(
+        MIN_MESSAGES_PER_SESSION,
+        Math.ceil(session.messages.length * 0.7),
+      );
+
+      return {
+        ...session,
+        messages: session.messages.slice(-keepCount),
+      };
+    });
+  }
+
+  if (items.length <= 1) return items;
+
+  const removable = [...items]
+    .filter((session) => session.id !== activeId)
+    .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))[0];
+
+  if (!removable) return items;
+  return items.filter((session) => session.id !== removable.id);
+}
+
+function isStorageQuotaError(error: unknown): boolean {
+  if (!(error instanceof DOMException)) return false;
+  return (
+    error.name === 'QuotaExceededError' ||
+    error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    error.code === 22 ||
+    error.code === 1014
+  );
 }

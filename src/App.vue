@@ -16,7 +16,6 @@ sessions.loadSessions();
 const agent = useWebSocketAgent({
   activeSession: () => sessions.activeSession.value,
   addMessage: sessions.addMessage,
-  replaceMessages: sessions.replaceMessages,
   saveSessions: sessions.saveSessions,
   touchSession: sessions.touchSession,
   updateTitleFromMessage: sessions.updateTitleFromMessage,
