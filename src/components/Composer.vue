@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const text = ref('');
 const textarea = ref<HTMLTextAreaElement | null>(null);
+const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
 
 function submit() {
   const value = text.value.trim();
@@ -24,7 +25,8 @@ function submit() {
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
-  if (event.ctrlKey || event.metaKey) return;
+  const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
+  if (shouldInsertNewline) return;
   if (!event.shiftKey) {
     event.preventDefault();
     submit();

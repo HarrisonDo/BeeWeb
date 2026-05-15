@@ -114,7 +114,7 @@ python -m http.server 8080
 - 错误消息渲染。
 - 停止生成请求。
 - 非 JSON 后端响应兜底显示。
-- Enter 发送，Ctrl/Cmd+Enter 换行。
+- Enter 发送；Windows 下 Ctrl+Enter 换行；macOS 下 Command+Enter 换行。
 
 ### 后端协议
 
@@ -234,7 +234,7 @@ When browser storage is full, BeeWeb automatically prunes older records:
 - Error rendering.
 - Stop request button.
 - Non-JSON backend response fallback.
-- Enter sends, Ctrl/Cmd+Enter inserts a newline.
+- Enter sends; Ctrl+Enter inserts a newline on Windows; Command+Enter inserts a newline on macOS.
 
 ### Backend Contract
 
