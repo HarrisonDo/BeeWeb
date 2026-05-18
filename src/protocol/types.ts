@@ -23,10 +23,19 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   time: string;
+  attachments?: ChatAttachment[];
   messageId?: string;
   think?: string;
   toolEvents?: ToolEvent[];
   status?: AssistantStatus;
+}
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  kind: 'text' | 'binary';
 }
 
 export interface ChatSession {
@@ -52,7 +61,13 @@ export interface ClientTextMessage {
   sessionId: string;
   messageId: string;
   message: string;
+  attachments?: ClientAttachment[];
   createdAt: string;
+}
+
+export interface ClientAttachment extends ChatAttachment {
+  text?: string;
+  base64?: string;
 }
 
 export interface ClientHistoryRequest {

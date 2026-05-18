@@ -506,6 +506,42 @@ button:disabled {
   padding-right: 54px;
 }
 
+.message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-right: 54px;
+}
+
+.message-attachment-chip,
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  max-width: 260px;
+  border: 1px solid color-mix(in srgb, #ffffff 22%, transparent);
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: inherit;
+  background: color-mix(in srgb, #111827 18%, transparent);
+  font-size: 0.76rem;
+}
+
+.attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  flex: 0 0 auto;
+  opacity: 0.72;
+  font-size: 0.72rem;
+}
+
 .message-loading,
 .message-ended {
   display: flex;
@@ -792,11 +828,55 @@ button:disabled {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   padding: 14px 18px;
   border-top: 1px solid var(--line);
   background: var(--surface);
+}
+
+.attachment-list {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: -2px;
+}
+
+.attachment-warnings {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+  color: var(--danger);
+  font-size: 0.76rem;
+}
+
+.attachment-chip {
+  color: var(--text);
+  border-color: var(--line);
+  background: var(--surface-soft);
+}
+
+.attachment-chip button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+}
+
+.file-input {
+  display: none;
+}
+
+.attach-button {
+  align-self: stretch;
+  width: 44px;
+  height: auto;
 }
 
 .composer textarea {

@@ -19,6 +19,7 @@ import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
 import { useTheme } from './composables/useTheme';
 import { useWebSocketAgent } from './composables/useWebSocketAgent';
+import type { ClientAttachment } from './protocol/types';
 
 const chatContainer = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
@@ -46,8 +47,8 @@ const themeLabel = computed(() => (
   theme.value === 'dark' ? t.value.themeLight : t.value.themeDark
 ));
 
-function onSend(text: string) {
-  agent.sendText(text);
+function onSend(text: string, attachments: ClientAttachment[]) {
+  agent.sendText(text, attachments);
   maybeScrollAfterUpdate();
 }
 

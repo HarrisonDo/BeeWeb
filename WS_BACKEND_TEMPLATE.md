@@ -43,6 +43,36 @@ The frontend now sends JSON only:
 }
 ```
 
+Optional file uploads are sent on the same user message with an `attachments` array. Text-like files include `text`; binary files include `base64`.
+
+```json
+{
+  "type": "text",
+  "sessionId": "browser-local-session-id",
+  "messageId": "question-message-id",
+  "message": "Please read these files.",
+  "attachments": [
+    {
+      "id": "file-1",
+      "name": "notes.md",
+      "size": 1200,
+      "type": "text/markdown",
+      "kind": "text",
+      "text": "# Notes..."
+    },
+    {
+      "id": "file-2",
+      "name": "image.png",
+      "size": 2048,
+      "type": "image/png",
+      "kind": "binary",
+      "base64": "iVBORw0KGgo..."
+    }
+  ],
+  "createdAt": "2026-05-11T10:00:00.000Z"
+}
+```
+
 ### Stop Request
 
 ```json

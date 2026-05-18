@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import type { ChatMessage, ChatSession, ClientMessage, ServerMessage } from '../protocol/types';
+import type { ChatAttachment, ChatMessage, ChatSession, ClientAttachment, ClientMessage, ServerMessage } from '../protocol/types';
 import {
   getMessageId,
   getServerType,
@@ -78,21 +78,24 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     }
   }
 
-  function sendText(text: string) {
+  function sendText(text: string, attachments: ClientAttachment[] = []) {
     if (!canSend.value) {
       options.addMessage('error', 'Not connected, message was not sent.');
       return;
     }
 
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed && !attachments.length) return;
 
     const session = options.activeSession();
     if (!session) return;
 
     const messageId = makeId();
-    options.updateTitleFromMessage(session, trimmed);
-    options.addMessage('user', trimmed, { messageId });
+    options.updateTitleFromMessage(session, trimmed || attachments[0]?.name || '');
+    options.addMessage('user', trimmed, {
+      attachments: toChatAttachments(attachments),
+      messageId,
+    });
     pendingTurns.value.set(messageId, null);
     ensureAssistantMessage(messageId);
     startNoResponseTimer(messageId);
@@ -102,6 +105,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       sessionId: session.id,
       messageId,
       message: trimmed,
+      attachments,
       createdAt: new Date().toISOString(),
     });
   }
@@ -357,4 +361,14 @@ function hasAssistantOutput(message: ChatMessage): boolean {
     message.think?.trim() ||
     message.toolEvents?.length,
   );
+}
+
+function toChatAttachments(attachments: ClientAttachment[]): ChatAttachment[] {
+  return attachments.map((attachment) => ({
+    id: attachment.id,
+    kind: attachment.kind,
+    name: attachment.name,
+    size: attachment.size,
+    type: attachment.type,
+  }));
 }

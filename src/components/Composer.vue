@@ -1,25 +1,34 @@
 <script setup lang="ts">
-import { SendHorizontal } from 'lucide-vue-next';
+import { Paperclip, SendHorizontal, X } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
+import type { ClientAttachment } from '../protocol/types';
 
-defineProps<{
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
+const props = defineProps<{
   disabled: boolean;
   labels: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
-  send: [text: string];
+  send: [text: string, attachments: ClientAttachment[]];
 }>();
 
 const text = ref('');
+const attachments = ref<ClientAttachment[]>([]);
+const fileInput = ref<HTMLInputElement | null>(null);
 const textarea = ref<HTMLTextAreaElement | null>(null);
+const uploadWarnings = ref<string[]>([]);
 const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
 
 function submit() {
   const value = text.value.trim();
-  if (!value) return;
-  emit('send', value);
+  if (!value && !attachments.value.length) return;
+  emit('send', value, attachments.value);
   text.value = '';
+  attachments.value = [];
+  uploadWarnings.value = [];
+  if (fileInput.value) fileInput.value.value = '';
   nextTick(resize);
 }
 
@@ -38,10 +47,97 @@ function resize() {
   textarea.value.style.height = 'auto';
   textarea.value.style.height = `${Math.min(150, textarea.value.scrollHeight)}px`;
 }
+
+function openFilePicker() {
+  fileInput.value?.click();
+}
+
+async function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+
+  const readable = files.filter((file) => file.size <= MAX_ATTACHMENT_BYTES);
+  const rejected = files.filter((file) => file.size > MAX_ATTACHMENT_BYTES);
+  uploadWarnings.value = rejected.map((file) => `${props.labels.fileTooLarge}: ${file.name}`);
+  const loaded = await Promise.all(readable.map(readAttachment));
+  attachments.value = [...attachments.value, ...loaded];
+  input.value = '';
+}
+
+function removeAttachment(id: string) {
+  attachments.value = attachments.value.filter((attachment) => attachment.id !== id);
+}
+
+function formatSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function readAttachment(file: File): Promise<ClientAttachment> {
+  const kind = isTextFile(file) ? 'text' : 'binary';
+  const base = {
+    id: makeAttachmentId(),
+    kind,
+    name: file.name,
+    size: file.size,
+    type: file.type || 'application/octet-stream',
+  } satisfies Omit<ClientAttachment, 'text' | 'base64'>;
+
+  if (kind === 'text') {
+    return {
+      ...base,
+      text: await file.text(),
+    };
+  }
+
+  return {
+    ...base,
+    base64: await readFileBase64(file),
+  };
+}
+
+function isTextFile(file: File) {
+  return (
+    file.type.startsWith('text/') ||
+    /\.(json|md|txt|csv|log|xml|yaml|yml|js|ts|tsx|jsx|css|html|py|go|rs|java|c|cpp|h)$/i.test(file.name)
+  );
+}
+
+function readFileBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',')[1] : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function makeAttachmentId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `file-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 </script>
 
 <template>
   <footer class="composer">
+    <div v-if="uploadWarnings.length" class="attachment-warnings" role="status">
+      <span v-for="warning in uploadWarnings" :key="warning">{{ warning }}</span>
+    </div>
+    <div v-if="attachments.length" class="attachment-list" :aria-label="labels.attachedFiles">
+      <span v-for="attachment in attachments" :key="attachment.id" class="attachment-chip">
+        <Paperclip :size="13" aria-hidden="true" />
+        <span class="attachment-name">{{ attachment.name }}</span>
+        <span class="attachment-size">{{ formatSize(attachment.size) }}</span>
+        <button type="button" :title="labels.removeFile" @click="removeAttachment(attachment.id)">
+          <X :size="13" aria-hidden="true" />
+        </button>
+      </span>
+    </div>
     <textarea
       ref="textarea"
       v-model="text"
@@ -51,11 +147,28 @@ function resize() {
       @input="resize"
       @keydown="onKeydown"
     ></textarea>
+    <input
+      ref="fileInput"
+      class="file-input"
+      type="file"
+      multiple
+      :disabled="disabled"
+      @change="onFileChange"
+    />
+    <button
+      type="button"
+      class="attach-button icon-button"
+      :title="labels.attachFiles"
+      :disabled="disabled"
+      @click="openFilePicker"
+    >
+      <Paperclip :size="17" aria-hidden="true" />
+    </button>
     <button
       type="button"
       class="send icon-text-button"
       :title="labels.send"
-      :disabled="disabled || !text.trim()"
+      :disabled="disabled || (!text.trim() && !attachments.length)"
       @click="submit"
     >
       <SendHorizontal :size="17" aria-hidden="true" />

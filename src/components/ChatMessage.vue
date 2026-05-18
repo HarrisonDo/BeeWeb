@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Check, Copy, Pencil, X } from 'lucide-vue-next';
+import { Check, Copy, Paperclip, Pencil, X } from 'lucide-vue-next';
 import FoldBlock from './FoldBlock.vue';
 import ToolEventsBlock from './ToolEventsBlock.vue';
 import { useMarkdown } from '../composables/useMarkdown';
@@ -97,6 +97,12 @@ function resizeEditTextarea() {
   editTextarea.value.style.height = `${Math.min(220, editTextarea.value.scrollHeight)}px`;
 }
 
+function formatSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
 async function copyText(text: string) {
   if (navigator.clipboard?.writeText) {
     try {
@@ -158,6 +164,14 @@ async function copyText(text: string) {
         :events="message.toolEvents"
         :labels="labels"
       />
+
+      <div v-if="message.attachments?.length" class="message-attachments">
+        <span v-for="attachment in message.attachments" :key="attachment.id" class="message-attachment-chip">
+          <Paperclip :size="13" aria-hidden="true" />
+          <span class="attachment-name">{{ attachment.name }}</span>
+          <span class="attachment-size">{{ formatSize(attachment.size) }}</span>
+        </span>
+      </div>
 
       <div v-if="isWaitingForResponse" class="message-loading" aria-live="polite">
         <span>{{ labels.waitingForResponse }}</span>

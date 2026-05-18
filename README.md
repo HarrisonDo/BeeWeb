@@ -101,6 +101,7 @@ python -m http.server 8080
 - 可编辑 WebSocket URL。
 - 连接和断开控制。
 - JSON 消息发送。
+- 文件上传随消息发送。
 - 基于 `messageId` 的流式响应匹配。
 - 本地会话管理。
 - 浏览器本地历史记录持久化。
@@ -221,6 +222,7 @@ When browser storage is full, BeeWeb automatically prunes older records:
 - Editable WebSocket URL.
 - Connect and disconnect controls.
 - JSON-only message sending.
+- File uploads sent with messages.
 - `messageId` based streaming response matching.
 - Local conversation sessions.
 - Browser-side history persistence through `localStorage`.
