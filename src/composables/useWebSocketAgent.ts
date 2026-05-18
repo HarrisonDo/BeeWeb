@@ -9,7 +9,7 @@ import {
 } from '../protocol/normalizers';
 import { makeId, nowTime } from './useSessions';
 
-const NO_RESPONSE_TIMEOUT_MS = 60_000;
+const NO_RESPONSE_TIMEOUT_MS = 5 * 60_000;
 
 interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
