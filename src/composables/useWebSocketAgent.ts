@@ -106,6 +106,45 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     });
   }
 
+  function resendEditedText(userMessageId: string, text: string) {
+    if (!canSend.value) {
+      options.addMessage('error', 'Not connected, edited message was not sent.');
+      return;
+    }
+
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const session = options.activeSession();
+    if (!session) return;
+
+    const userMessage = session.messages.find((message) => (
+      message.id === userMessageId &&
+      message.role === 'user'
+    ));
+    if (!userMessage) return;
+
+    const previousMessageId = userMessage.messageId || null;
+    const messageId = makeId();
+    if (previousMessageId) {
+      removeAssistantForMessage(session, previousMessageId);
+    }
+    userMessage.messageId = messageId;
+    pendingTurns.value.set(messageId, null);
+    ensureAssistantMessage(messageId);
+    startNoResponseTimer(messageId);
+    options.touchSession(session);
+    options.saveSessions();
+
+    sendJson({
+      type: 'text',
+      sessionId: session.id,
+      messageId,
+      message: trimmed,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   function stopCurrent() {
     if (!canSend.value) return;
     const session = options.activeSession();
@@ -253,6 +292,15 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     options.saveSessions();
   }
 
+  function removeAssistantForMessage(session: ChatSession, messageId: string) {
+    clearNoResponseTimer(messageId);
+    pendingTurns.value.delete(messageId);
+    session.messages = session.messages.filter((message) => !(
+      message.role === 'assistant' &&
+      message.messageId === messageId
+    ));
+  }
+
   function startNoResponseTimer(messageId: string) {
     clearNoResponseTimer(messageId);
     const timerId = window.setTimeout(() => {
@@ -296,6 +344,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     connected,
     disconnect,
     hasPendingTurns,
+    resendEditedText,
     sendText,
     stopCurrent,
     wsUrl,

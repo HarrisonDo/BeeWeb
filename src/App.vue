@@ -95,6 +95,13 @@ function exportSession() {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+function updateAndResendUserMessage(messageId: string, content: string) {
+  const updated = sessions.updateMessageContent(messageId, content);
+  if (!updated) return;
+  agent.resendEditedText(messageId, content);
+  maybeScrollAfterUpdate();
+}
 </script>
 
 <template>
@@ -194,6 +201,7 @@ function exportSession() {
           :key="message.id"
           :labels="t"
           :message="message"
+          @update-user-message="updateAndResendUserMessage"
         />
       </section>
 

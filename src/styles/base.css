@@ -391,6 +391,7 @@ button:disabled {
 }
 
 .bubble {
+  position: relative;
   padding: 11px 13px;
   border-radius: 10px;
   white-space: pre-wrap;
@@ -403,6 +404,73 @@ button:disabled {
 .user .bubble {
   color: #ffffff;
   background: var(--bubble-user);
+}
+
+.user-message-actions {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.message.user .bubble:hover .user-message-actions,
+.message.user .bubble:focus-within .user-message-actions {
+  opacity: 1;
+}
+
+.message-action-button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, #ffffff 28%, transparent);
+  border-radius: 7px;
+  color: #ffffff;
+  background: color-mix(in srgb, #111827 34%, transparent);
+}
+
+.message-action-button:hover {
+  border-color: color-mix(in srgb, #ffffff 44%, transparent);
+  background: color-mix(in srgb, #111827 48%, transparent);
+}
+
+.message-action-button.primary {
+  background: var(--success);
+}
+
+.user-edit-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 22px;
+}
+
+.user-edit-textarea {
+  width: min(520px, 100%);
+  min-height: 64px;
+  max-height: 220px;
+  resize: none;
+  border: 1px solid color-mix(in srgb, #ffffff 30%, transparent);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #ffffff;
+  background: color-mix(in srgb, #111827 28%, transparent);
+  outline: none;
+  line-height: 1.45;
+}
+
+.user-edit-textarea:focus {
+  border-color: color-mix(in srgb, #ffffff 56%, transparent);
+}
+
+.user-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .assistant .bubble {
@@ -432,6 +500,10 @@ button:disabled {
 
 .markdown-body.plain {
   white-space: pre-wrap;
+}
+
+.message.user .markdown-body.plain {
+  padding-right: 54px;
 }
 
 .message-loading,

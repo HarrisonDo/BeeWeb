@@ -103,6 +103,19 @@ export function useSessions() {
     session.title = compact.slice(0, 24) || DEFAULT_TITLE;
   }
 
+  function updateMessageContent(messageId: string, content: string): ChatMessage | null {
+    const session = activeSession.value;
+    if (!session) return null;
+
+    const message = session.messages.find((item) => item.id === messageId);
+    if (!message || message.role !== 'user') return null;
+
+    message.content = content;
+    session.updatedAt = new Date().toISOString();
+    saveSessions();
+    return message;
+  }
+
   function clearCurrentSession() {
     const session = activeSession.value;
     if (!session) return;
@@ -135,6 +148,7 @@ export function useSessions() {
     saveSessions,
     setActiveSession,
     touchSession,
+    updateMessageContent,
     updateTitleFromMessage,
   };
 }
