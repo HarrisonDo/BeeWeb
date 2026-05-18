@@ -35,11 +35,33 @@ function submit() {
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
   const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
-  if (shouldInsertNewline) return;
+  if (shouldInsertNewline) {
+    event.preventDefault();
+    insertNewlineAtCursor();
+    return;
+  }
   if (!event.shiftKey) {
     event.preventDefault();
     submit();
   }
+}
+
+function insertNewlineAtCursor() {
+  const input = textarea.value;
+  if (!input) {
+    text.value = `${text.value}\n`;
+    nextTick(resize);
+    return;
+  }
+
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  text.value = `${text.value.slice(0, start)}\n${text.value.slice(end)}`;
+  nextTick(() => {
+    input.selectionStart = start + 1;
+    input.selectionEnd = start + 1;
+    resize();
+  });
 }
 
 function resize() {
