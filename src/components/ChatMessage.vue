@@ -129,27 +129,6 @@ async function copyText(text: string) {
   <article class="message" :class="message.role">
     <div class="meta">{{ roleName(message.role) }} · {{ message.time }}</div>
     <div class="bubble">
-      <div v-if="message.role === 'user'" class="user-message-actions">
-        <button
-          type="button"
-          class="message-action-button"
-          :title="copied ? labels.copied : labels.copyMessage"
-          @click="copyMessage"
-        >
-          <Check v-if="copied" :size="14" aria-hidden="true" />
-          <Copy v-else :size="14" aria-hidden="true" />
-        </button>
-        <button
-          v-if="!isEditing"
-          type="button"
-          class="message-action-button"
-          :title="labels.editMessage"
-          @click="startEdit"
-        >
-          <Pencil :size="14" aria-hidden="true" />
-        </button>
-      </div>
-
       <FoldBlock
         v-if="message.think"
         class-name="think-card"
@@ -210,6 +189,27 @@ async function copyText(text: string) {
         </div>
       </div>
       <div v-else class="markdown-body plain">{{ message.content }}</div>
+    </div>
+
+    <div v-if="message.role === 'user'" class="user-message-actions">
+      <button
+        type="button"
+        class="message-action-button"
+        :title="copied ? labels.copied : labels.copyMessage"
+        @click="copyMessage"
+      >
+        <Check v-if="copied" :size="14" aria-hidden="true" />
+        <Copy v-else :size="14" aria-hidden="true" />
+      </button>
+      <button
+        v-if="!isEditing"
+        type="button"
+        class="message-action-button"
+        :title="labels.editMessage"
+        @click="startEdit"
+      >
+        <Pencil :size="14" aria-hidden="true" />
+      </button>
     </div>
   </article>
 </template>

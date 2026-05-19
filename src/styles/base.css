@@ -407,17 +407,15 @@ button:disabled {
 }
 
 .user-message-actions {
-  position: absolute;
-  top: 6px;
-  right: 7px;
   display: flex;
   gap: 4px;
+  justify-content: flex-end;
   opacity: 0;
   transition: opacity 0.16s ease;
 }
 
-.message.user .bubble:hover .user-message-actions,
-.message.user .bubble:focus-within .user-message-actions {
+.message.user:hover .user-message-actions,
+.message.user:focus-within .user-message-actions {
   opacity: 1;
 }
 
@@ -502,16 +500,13 @@ button:disabled {
   white-space: pre-wrap;
 }
 
-.message.user .markdown-body.plain {
-  padding-right: 54px;
-}
+
 
 .message-attachments {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
-  padding-right: 54px;
 }
 
 .message-attachment-chip,
