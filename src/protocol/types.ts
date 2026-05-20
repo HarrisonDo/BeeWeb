@@ -35,7 +35,7 @@ export interface ChatAttachment {
   name: string;
   size: number;
   type: string;
-  kind: 'text' | 'binary';
+  kind: 'text' | 'image' | 'binary';
 }
 
 export interface ChatSession {
@@ -61,13 +61,30 @@ export interface ClientTextMessage {
   sessionId: string;
   messageId: string;
   message: string;
-  attachments?: ClientAttachment[];
   createdAt: string;
 }
 
 export interface ClientAttachment extends ChatAttachment {
   text?: string;
   base64?: string;
+}
+
+export interface ClientChatMessage {
+  type: 'chat';
+  sessionId: string;
+  messageId: string;
+  text: string;
+  images: Array<string | {
+    name: string;
+    mime: string;
+    data: string;
+  }>;
+  files: Array<{
+    name: string;
+    mime: string;
+    content: string;
+  }>;
+  createdAt: string;
 }
 
 export interface ClientHistoryRequest {
@@ -81,7 +98,7 @@ export interface ClientStopRequest {
   messageId: string | null;
 }
 
-export type ClientMessage = ClientTextMessage | ClientHistoryRequest | ClientStopRequest;
+export type ClientMessage = ClientTextMessage | ClientChatMessage | ClientHistoryRequest | ClientStopRequest;
 
 export interface ServerMessage {
   type?: ServerEventType | string;

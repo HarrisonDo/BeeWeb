@@ -101,12 +101,10 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     startNoResponseTimer(messageId);
 
     sendJson({
-      type: 'text',
       sessionId: session.id,
       messageId,
-      message: trimmed,
-      attachments,
       createdAt: new Date().toISOString(),
+      ...createClientContentPayload(trimmed, attachments),
     });
   }
 
@@ -371,4 +369,42 @@ function toChatAttachments(attachments: ClientAttachment[]): ChatAttachment[] {
     size: attachment.size,
     type: attachment.type,
   }));
+}
+
+function createClientContentPayload(
+  text: string,
+  attachments: ClientAttachment[],
+): (
+  | {
+    type: 'text';
+    message: string;
+  }
+  | {
+    type: 'chat';
+    text: string;
+    images: Array<string | { name: string; mime: string; data: string }>;
+    files: Array<{ name: string; mime: string; content: string }>;
+  }
+) {
+  if (!attachments.length) {
+    return {
+      type: 'text',
+      message: text,
+    };
+  }
+
+  return {
+    type: 'chat',
+    text,
+    images: attachments
+      .filter((attachment) => attachment.kind === 'image' && attachment.base64)
+      .map((attachment) => `data:${attachment.type};base64,${attachment.base64}`),
+    files: attachments
+      .filter((attachment) => attachment.kind === 'text' && attachment.text !== undefined)
+      .map((attachment) => ({
+        name: attachment.name,
+        mime: attachment.type,
+        content: attachment.text || '',
+      })),
+  };
 }

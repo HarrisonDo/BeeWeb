@@ -43,30 +43,28 @@ The frontend now sends JSON only:
 }
 ```
 
-Optional file uploads are sent on the same user message with an `attachments` array. Text-like files include `text`; binary files include `base64`.
+When images or text files are uploaded, the frontend sends `type: "chat"` instead of `type: "text"`.
+
+Multimodal `chat` messages include:
+
+- `text`: plain text message.
+- `images`: image list. The frontend sends uploaded images as full Data URLs.
+- `files`: text-file list. Each file contains `name`, `mime`, and raw text `content`.
 
 ```json
 {
-  "type": "text",
+  "type": "chat",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
-  "message": "Please read these files.",
-  "attachments": [
+  "text": "Please read these files.",
+  "images": [
+    "data:image/png;base64,iVBORw0KGgo..."
+  ],
+  "files": [
     {
-      "id": "file-1",
       "name": "notes.md",
-      "size": 1200,
-      "type": "text/markdown",
-      "kind": "text",
-      "text": "# Notes..."
-    },
-    {
-      "id": "file-2",
-      "name": "image.png",
-      "size": 2048,
-      "type": "image/png",
-      "kind": "binary",
-      "base64": "iVBORw0KGgo..."
+      "mime": "text/markdown",
+      "content": "# Notes..."
     }
   ],
   "createdAt": "2026-05-11T10:00:00.000Z"

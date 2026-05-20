@@ -79,9 +79,16 @@ async function onFileChange(event: Event) {
   const files = Array.from(input.files || []);
   if (!files.length) return;
 
-  const readable = files.filter((file) => file.size <= MAX_ATTACHMENT_BYTES);
-  const rejected = files.filter((file) => file.size > MAX_ATTACHMENT_BYTES);
-  uploadWarnings.value = rejected.map((file) => `${props.labels.fileTooLarge}: ${file.name}`);
+  const oversized = files.filter((file) => file.size > MAX_ATTACHMENT_BYTES);
+  const unsupported = files.filter((file) => file.size <= MAX_ATTACHMENT_BYTES && getAttachmentKind(file) === 'binary');
+  const readable = files.filter((file) => (
+    file.size <= MAX_ATTACHMENT_BYTES &&
+    getAttachmentKind(file) !== 'binary'
+  ));
+  uploadWarnings.value = [
+    ...oversized.map((file) => `${props.labels.fileTooLarge}: ${file.name}`),
+    ...unsupported.map((file) => `${props.labels.unsupportedFile}: ${file.name}`),
+  ];
   const loaded = await Promise.all(readable.map(readAttachment));
   attachments.value = [...attachments.value, ...loaded];
   input.value = '';
@@ -98,7 +105,7 @@ function formatSize(size: number) {
 }
 
 async function readAttachment(file: File): Promise<ClientAttachment> {
-  const kind = isTextFile(file) ? 'text' : 'binary';
+  const kind = getAttachmentKind(file);
   const base = {
     id: makeAttachmentId(),
     kind,
@@ -118,6 +125,12 @@ async function readAttachment(file: File): Promise<ClientAttachment> {
     ...base,
     base64: await readFileBase64(file),
   };
+}
+
+function getAttachmentKind(file: File): ClientAttachment['kind'] {
+  if (file.type.startsWith('image/')) return 'image';
+  if (isTextFile(file)) return 'text';
+  return 'binary';
 }
 
 function isTextFile(file: File) {
