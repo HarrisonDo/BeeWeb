@@ -1,6 +1,6 @@
 # AgentBee WebSocket Backend Template
 
-This document describes the JSON protocol expected by the current `demo.html` frontend.
+This document describes the JSON protocol expected by the current Vue frontend.
 
 Current backend URL:
 
@@ -45,26 +45,31 @@ The frontend now sends JSON only:
 
 When images or text files are uploaded, the frontend sends `type: "chat"` instead of `type: "text"`.
 
-Multimodal `chat` messages include:
+Multimodal `chat` messages include a `content` array:
 
-- `text`: plain text message.
-- `images`: image list. The frontend sends uploaded images as full Data URLs.
-- `files`: text-file list. Each file contains `name`, `mime`, and raw text `content`.
+- Text parts use `{ "type": "text", "text": "..." }`.
+- Image parts use `{ "type": "image_url", "image_url": { "url": "data:image/..." } }`.
+- Uploaded text files are converted into additional text parts with filename, MIME, and raw content.
 
 ```json
 {
   "type": "chat",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
-  "text": "Please read these files.",
-  "images": [
-    "data:image/png;base64,iVBORw0KGgo..."
-  ],
-  "files": [
+  "content": [
     {
-      "name": "notes.md",
-      "mime": "text/markdown",
-      "content": "# Notes..."
+      "type": "text",
+      "text": "Please read these files."
+    },
+    {
+      "type": "text",
+      "text": "File: notes.md\nMIME: text/markdown\n\n# Notes..."
+    },
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "data:image/png;base64,iVBORw0KGgo..."
+      }
     }
   ],
   "createdAt": "2026-05-11T10:00:00.000Z"

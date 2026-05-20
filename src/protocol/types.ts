@@ -73,19 +73,21 @@ export interface ClientChatMessage {
   type: 'chat';
   sessionId: string;
   messageId: string;
-  text: string;
-  images: Array<string | {
-    name: string;
-    mime: string;
-    data: string;
-  }>;
-  files: Array<{
-    name: string;
-    mime: string;
-    content: string;
-  }>;
+  content: ClientChatContentPart[];
   createdAt: string;
 }
+
+export type ClientChatContentPart =
+  | {
+    type: 'text';
+    text: string;
+  }
+  | {
+    type: 'image_url';
+    image_url: {
+      url: string;
+    };
+  };
 
 export interface ClientHistoryRequest {
   type: 'history_request';

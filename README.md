@@ -121,6 +121,27 @@ python -m http.server 8080
 
 见 `WS_BACKEND_TEMPLATE.md`。
 
+普通纯文本消息仍发送：
+
+```json
+{
+  "type": "text",
+  "message": "用户输入"
+}
+```
+
+当消息包含图片或文本文件时，前端会发送 `type: "chat"`，并使用 `content` 多模态数组：
+
+```json
+{
+  "type": "chat",
+  "content": [
+    { "type": "text", "text": "用户输入" },
+    { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+  ]
+}
+```
+
 ## English
 
 BeeWeb is a `Vue 3 + Vite + TypeScript` WebSocket Agent chat frontend.
@@ -241,3 +262,24 @@ When browser storage is full, BeeWeb automatically prunes older records:
 ### Backend Contract
 
 See `WS_BACKEND_TEMPLATE.md`.
+
+Plain text messages are still sent as:
+
+```json
+{
+  "type": "text",
+  "message": "User input"
+}
+```
+
+When a message includes images or text files, the frontend sends `type: "chat"` with a multimodal `content` array:
+
+```json
+{
+  "type": "chat",
+  "content": [
+    { "type": "text", "text": "User input" },
+    { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+  ]
+}
+```

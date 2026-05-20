@@ -381,9 +381,10 @@ function createClientContentPayload(
   }
   | {
     type: 'chat';
-    text: string;
-    images: Array<string | { name: string; mime: string; data: string }>;
-    files: Array<{ name: string; mime: string; content: string }>;
+    content: Array<
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: { url: string } }
+    >;
   }
 ) {
   if (!attachments.length) {
@@ -393,18 +394,26 @@ function createClientContentPayload(
     };
   }
 
-  return {
-    type: 'chat',
-    text,
-    images: attachments
-      .filter((attachment) => attachment.kind === 'image' && attachment.base64)
-      .map((attachment) => `data:${attachment.type};base64,${attachment.base64}`),
-    files: attachments
+  const content = [
+    ...(text ? [{ type: 'text' as const, text }] : []),
+    ...attachments
       .filter((attachment) => attachment.kind === 'text' && attachment.text !== undefined)
       .map((attachment) => ({
-        name: attachment.name,
-        mime: attachment.type,
-        content: attachment.text || '',
+        type: 'text' as const,
+        text: `File: ${attachment.name}\nMIME: ${attachment.type}\n\n${attachment.text || ''}`,
       })),
+    ...attachments
+      .filter((attachment) => attachment.kind === 'image' && attachment.base64)
+      .map((attachment) => ({
+        type: 'image_url' as const,
+        image_url: {
+          url: `data:${attachment.type};base64,${attachment.base64}`,
+        },
+      })),
+  ];
+
+  return {
+    type: 'chat',
+    content,
   };
 }

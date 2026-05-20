@@ -5,7 +5,7 @@
 ## 已实现
 
 - 每个用户问题生成独立 `messageId`。
-- 前端发送 `text` JSON。
+- 前端发送 JSON：纯文本为 `type: "text"`；带图片或文本文件时为 `type: "chat"`，并使用 OpenAI-style `content` 数组。
 - 前端每条发送到 WS 的 JSON 字符串末尾都会追加一个换行符 `\n`。
 - 后端返回 `content/status/think/tool_calls/tool_result/error/end` 时可以带同一个 `messageId`。
 - `think` 会显示为类似 Codex 的思考块，超过约 3 行时默认折叠。
@@ -15,8 +15,8 @@
 - 输入框使用 Enter 发送，Ctrl+Enter 或 Cmd+Enter 换行。
 - 前端按 `messageId` 分流多个并发回答。
 - 如果后端暂时没有返回 `messageId`，前端会落到最近一个 loading 回答里。
-- WS 连接成功后，前端会发送 `history_request`。
-- 前端支持 `history` 回包并渲染聊天记录。
+- WS 获取聊天历史暂不启用，聊天记录保存在浏览器 `localStorage`。
+- 浏览器存储不足时，前端会裁剪旧记录并优先保留较新的会话内容。
 - assistant 回复支持轻量 Markdown 渲染。
 
 ## 关键字段
@@ -27,6 +27,21 @@
   "sessionId": "session-xxx",
   "messageId": "msg-xxx",
   "message": "用户问题",
+  "createdAt": "2026-05-11T10:00:00.000Z"
+}
+```
+
+带附件时：
+
+```json
+{
+  "type": "chat",
+  "sessionId": "session-xxx",
+  "messageId": "msg-xxx",
+  "content": [
+    { "type": "text", "text": "用户问题" },
+    { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+  ],
   "createdAt": "2026-05-11T10:00:00.000Z"
 }
 ```
