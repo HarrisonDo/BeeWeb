@@ -31,25 +31,28 @@ The following request shape is kept only for future protocol reference:
 
 ### User Message
 
-The frontend now sends JSON only:
+The frontend now sends JSON only. All user messages use `type: "chat"` with a `content` array:
 
 ```json
 {
-  "type": "text",
+  "type": "chat",
   "sessionId": "browser-local-session-id",
   "messageId": "question-message-id",
-  "message": "用户输入的原始文本",
+  "content": [
+    {
+      "type": "text",
+      "text": "用户输入的原始文本"
+    }
+  ],
   "createdAt": "2026-05-11T10:00:00.000Z"
 }
 ```
 
-When images or text files are uploaded, the frontend sends `type: "chat"` instead of `type: "text"`.
-
-Multimodal `chat` messages include a `content` array:
+When images or text files are uploaded, the frontend appends more parts to the same `content` array:
 
 - Text parts use `{ "type": "text", "text": "..." }`.
+- File parts use `{ "type": "file", "file": { "text": "..." } }`.
 - Image parts use `{ "type": "image_url", "image_url": { "url": "data:image/..." } }`.
-- Uploaded text files are converted into additional text parts with filename, MIME, and raw content.
 
 ```json
 {
@@ -62,8 +65,10 @@ Multimodal `chat` messages include a `content` array:
       "text": "Please read these files."
     },
     {
-      "type": "text",
-      "text": "File: notes.md\nMIME: text/markdown\n\n# Notes..."
+      "type": "file",
+      "file": {
+        "text": "# Notes..."
+      }
     },
     {
       "type": "image_url",
@@ -259,10 +264,15 @@ Client sends:
 
 ```json
 {
-  "type": "text",
+  "type": "chat",
   "sessionId": "session-1",
   "messageId": "msg-1",
-  "message": "用 Markdown 回复一个列表",
+  "content": [
+    {
+      "type": "text",
+      "text": "用 Markdown 回复一个列表"
+    }
+  ],
   "createdAt": "2026-05-11T10:00:00.000Z"
 }
 ```

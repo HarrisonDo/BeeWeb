@@ -121,22 +121,25 @@ python -m http.server 8080
 
 见 `WS_BACKEND_TEMPLATE.md`。
 
-普通纯文本消息仍发送：
+所有用户消息都统一发送为 `type: "chat"`。纯文本消息也放入 `content` 数组：
 
 ```json
 {
-  "type": "text",
-  "message": "用户输入"
+  "type": "chat",
+  "content": [
+    { "type": "text", "text": "用户输入" }
+  ]
 }
 ```
 
-当消息包含图片或文本文件时，前端会发送 `type: "chat"`，并使用 `content` 多模态数组：
+当消息包含图片或文本文件时，会继续追加多模态内容：
 
 ```json
 {
   "type": "chat",
   "content": [
     { "type": "text", "text": "用户输入" },
+    { "type": "file", "file": { "text": "文件文本" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ]
 }
@@ -263,22 +266,25 @@ When browser storage is full, BeeWeb automatically prunes older records:
 
 See `WS_BACKEND_TEMPLATE.md`.
 
-Plain text messages are still sent as:
+All user messages are sent as `type: "chat"`. Plain text is also placed in the `content` array:
 
 ```json
 {
-  "type": "text",
-  "message": "User input"
+  "type": "chat",
+  "content": [
+    { "type": "text", "text": "User input" }
+  ]
 }
 ```
 
-When a message includes images or text files, the frontend sends `type: "chat"` with a multimodal `content` array:
+When a message includes images or text files, the frontend appends multimodal content parts:
 
 ```json
 {
   "type": "chat",
   "content": [
     { "type": "text", "text": "User input" },
+    { "type": "file", "file": { "text": "File text" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ]
 }

@@ -139,11 +139,10 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     options.saveSessions();
 
     sendJson({
-      type: 'text',
       sessionId: session.id,
       messageId,
-      message: trimmed,
       createdAt: new Date().toISOString(),
+      ...createClientContentPayload(trimmed, []),
     });
   }
 
@@ -374,33 +373,23 @@ function toChatAttachments(attachments: ClientAttachment[]): ChatAttachment[] {
 function createClientContentPayload(
   text: string,
   attachments: ClientAttachment[],
-): (
-  | {
-    type: 'text';
-    message: string;
-  }
-  | {
-    type: 'chat';
-    content: Array<
-      | { type: 'text'; text: string }
-      | { type: 'image_url'; image_url: { url: string } }
-    >;
-  }
-) {
-  if (!attachments.length) {
-    return {
-      type: 'text',
-      message: text,
-    };
-  }
-
+): {
+  type: 'chat';
+  content: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image_url'; image_url: { url: string } }
+    | { type: 'file'; file: { text: string } }
+  >;
+} {
   const content = [
     ...(text ? [{ type: 'text' as const, text }] : []),
     ...attachments
       .filter((attachment) => attachment.kind === 'text' && attachment.text !== undefined)
       .map((attachment) => ({
-        type: 'text' as const,
-        text: `File: ${attachment.name}\nMIME: ${attachment.type}\n\n${attachment.text || ''}`,
+        type: 'file' as const,
+        file: {
+          text: attachment.text || '',
+        },
       })),
     ...attachments
       .filter((attachment) => attachment.kind === 'image' && attachment.base64)

@@ -5,7 +5,7 @@
 ## 已实现
 
 - 每个用户问题生成独立 `messageId`。
-- 前端发送 JSON：纯文本为 `type: "text"`；带图片或文本文件时为 `type: "chat"`，并使用 OpenAI-style `content` 数组。
+- 前端统一发送 `type: "chat"` JSON，纯文本、图片和文本文件都放在 OpenAI-style `content` 数组中。
 - 前端每条发送到 WS 的 JSON 字符串末尾都会追加一个换行符 `\n`。
 - 后端返回 `content/status/think/tool_calls/tool_result/error/end` 时可以带同一个 `messageId`。
 - `think` 会显示为类似 Codex 的思考块，超过约 3 行时默认折叠。
@@ -23,10 +23,12 @@
 
 ```json
 {
-  "type": "text",
+  "type": "chat",
   "sessionId": "session-xxx",
   "messageId": "msg-xxx",
-  "message": "用户问题",
+  "content": [
+    { "type": "text", "text": "用户问题" }
+  ],
   "createdAt": "2026-05-11T10:00:00.000Z"
 }
 ```
@@ -40,6 +42,7 @@
   "messageId": "msg-xxx",
   "content": [
     { "type": "text", "text": "用户问题" },
+    { "type": "file", "file": { "text": "文件文本" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ],
   "createdAt": "2026-05-11T10:00:00.000Z"

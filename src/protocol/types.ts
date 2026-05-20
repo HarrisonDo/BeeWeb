@@ -56,14 +56,6 @@ export interface ToolEvent {
   time: string;
 }
 
-export interface ClientTextMessage {
-  type: 'text';
-  sessionId: string;
-  messageId: string;
-  message: string;
-  createdAt: string;
-}
-
 export interface ClientAttachment extends ChatAttachment {
   text?: string;
   base64?: string;
@@ -87,6 +79,12 @@ export type ClientChatContentPart =
     image_url: {
       url: string;
     };
+  }
+  | {
+    type: 'file';
+    file: {
+      text: string;
+    };
   };
 
 export interface ClientHistoryRequest {
@@ -100,7 +98,7 @@ export interface ClientStopRequest {
   messageId: string | null;
 }
 
-export type ClientMessage = ClientTextMessage | ClientChatMessage | ClientHistoryRequest | ClientStopRequest;
+export type ClientMessage = ClientChatMessage | ClientHistoryRequest | ClientStopRequest;
 
 export interface ServerMessage {
   type?: ServerEventType | string;
