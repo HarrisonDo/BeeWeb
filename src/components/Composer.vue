@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Paperclip, SendHorizontal, X } from 'lucide-vue-next';
+import { Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import type { ClientAttachment } from '../protocol/types';
 
@@ -7,11 +7,13 @@ const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
 const props = defineProps<{
   disabled: boolean;
+  hasPendingTurns: boolean;
   labels: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
   send: [text: string, attachments: ClientAttachment[]];
+  stop: [];
 }>();
 
 const text = ref('');
@@ -32,6 +34,14 @@ function submit() {
   nextTick(resize);
 }
 
+function triggerPrimaryAction() {
+  if (props.hasPendingTurns) {
+    emit('stop');
+    return;
+  }
+  submit();
+}
+
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
   const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
@@ -42,7 +52,7 @@ function onKeydown(event: KeyboardEvent) {
   }
   if (!event.shiftKey) {
     event.preventDefault();
-    submit();
+    triggerPrimaryAction();
   }
 }
 
@@ -202,12 +212,14 @@ function makeAttachmentId() {
     <button
       type="button"
       class="send icon-text-button"
-      :title="labels.send"
-      :disabled="disabled || (!text.trim() && !attachments.length)"
-      @click="submit"
+      :class="{ stop: hasPendingTurns }"
+      :title="hasPendingTurns ? labels.stopGeneration : labels.send"
+      :disabled="disabled || (!hasPendingTurns && !text.trim() && !attachments.length)"
+      @click="triggerPrimaryAction"
     >
-      <SendHorizontal :size="17" aria-hidden="true" />
-      <span>{{ labels.send }}</span>
+      <Square v-if="hasPendingTurns" :size="16" aria-hidden="true" />
+      <SendHorizontal v-else :size="17" aria-hidden="true" />
+      <span>{{ hasPendingTurns ? labels.stopGeneration : labels.send }}</span>
     </button>
   </footer>
 </template>

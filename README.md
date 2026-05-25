@@ -18,6 +18,11 @@ ws://192.168.254.10:8686
 
 ### 使用方式
 
+环境要求：
+
+- Node.js `>= 20.19.0`
+- npm `>= 10.0.0`
+
 安装依赖并启动开发服务器：
 
 ```bash
@@ -162,6 +167,11 @@ ws://192.168.254.10:8686
 ```
 
 ### Usage
+
+Requirements:
+
+- Node.js `>= 20.19.0`
+- npm `>= 10.0.0`
 
 Install dependencies and start the dev server:
 

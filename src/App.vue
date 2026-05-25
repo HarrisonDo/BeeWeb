@@ -7,7 +7,6 @@ import {
   Languages,
   Moon,
   Plus,
-  Square,
   Sun,
   Trash2,
 } from 'lucide-vue-next';
@@ -103,6 +102,16 @@ function updateAndResendUserMessage(messageId: string, content: string) {
   agent.resendEditedText(messageId, content);
   maybeScrollAfterUpdate();
 }
+
+function resendUserMessage(messageId: string) {
+  const message = sessions.activeSession.value?.messages.find((item) => (
+    item.id === messageId &&
+    item.role === 'user'
+  ));
+  if (!message?.content?.trim()) return;
+  agent.resendEditedText(messageId, message.content);
+  maybeScrollAfterUpdate();
+}
 </script>
 
 <template>
@@ -175,15 +184,6 @@ function updateAndResendUserMessage(messageId: string, content: string) {
           <button
             type="button"
             class="icon-button"
-            :title="t.stopGeneration"
-            :disabled="!agent.hasPendingTurns.value"
-            @click="agent.stopCurrent"
-          >
-            <Square :size="15" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="icon-button"
             :title="t.scrollToBottom"
             :class="{ attention: !shouldAutoScroll }"
             @click="scrollToBottom"
@@ -202,11 +202,18 @@ function updateAndResendUserMessage(messageId: string, content: string) {
           :key="message.id"
           :labels="t"
           :message="message"
+          @resend-user-message="resendUserMessage"
           @update-user-message="updateAndResendUserMessage"
         />
       </section>
 
-      <Composer :labels="t" :disabled="!agent.canSend.value" @send="onSend" />
+      <Composer
+        :labels="t"
+        :disabled="!agent.canSend.value"
+        :has-pending-turns="agent.hasPendingTurns.value"
+        @send="onSend"
+        @stop="agent.stopCurrent"
+      />
     </main>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Check, Copy, Paperclip, Pencil, X } from 'lucide-vue-next';
+import { Check, Copy, Paperclip, Pencil, RotateCcw, X } from 'lucide-vue-next';
 import FoldBlock from './FoldBlock.vue';
 import ToolEventsBlock from './ToolEventsBlock.vue';
 import { useMarkdown } from '../composables/useMarkdown';
@@ -12,6 +12,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  resendUserMessage: [messageId: string];
   updateUserMessage: [messageId: string, content: string];
 }>();
 
@@ -76,6 +77,10 @@ function saveEdit() {
   if (!nextContent) return;
   emit('updateUserMessage', props.message.id, nextContent);
   isEditing.value = false;
+}
+
+function resendMessage() {
+  emit('resendUserMessage', props.message.id);
 }
 
 function onEditKeydown(event: KeyboardEvent) {
@@ -192,6 +197,15 @@ async function copyText(text: string) {
     </div>
 
     <div v-if="message.role === 'user'" class="user-message-actions">
+      <button
+        v-if="!isEditing"
+        type="button"
+        class="message-action-button"
+        :title="labels.resendMessage"
+        @click="resendMessage"
+      >
+        <RotateCcw :size="14" aria-hidden="true" />
+      </button>
       <button
         type="button"
         class="message-action-button"

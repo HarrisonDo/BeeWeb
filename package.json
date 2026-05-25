@@ -4,10 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/check-node.cjs",
     "dev": "vite --host 127.0.0.1",
+    "prebuild": "node scripts/check-node.cjs",
     "build": "vue-tsc --noEmit && vite build",
     "build:standalone": "npm run build && node scripts/build-standalone.mjs",
+    "prepreview": "node scripts/check-node.cjs",
     "preview": "vite preview --host 127.0.0.1"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "dompurify": "^3.4.2",
