@@ -83,7 +83,9 @@ export type ClientChatContentPart =
   | {
     type: 'file';
     file: {
-      text: string;
+      filename: string;
+      mimeType: string;
+      content: string;
     };
   };
 

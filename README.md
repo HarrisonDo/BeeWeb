@@ -144,7 +144,7 @@ python -m http.server 8080
   "type": "chat",
   "content": [
     { "type": "text", "text": "用户输入" },
-    { "type": "file", "file": { "text": "文件文本" } },
+    { "type": "file", "file": { "filename": "notes.md", "mimeType": "text/markdown", "content": "文件文本" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ]
 }
@@ -294,7 +294,7 @@ When a message includes images or text files, the frontend appends multimodal co
   "type": "chat",
   "content": [
     { "type": "text", "text": "User input" },
-    { "type": "file", "file": { "text": "File text" } },
+    { "type": "file", "file": { "filename": "notes.md", "mimeType": "text/markdown", "content": "File text" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ]
 }

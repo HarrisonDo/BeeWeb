@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import {
   ArrowDownToLine,
   Download,
   Eraser,
   Languages,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Sun,
   Trash2,
@@ -22,6 +24,7 @@ import type { ClientAttachment } from './protocol/types';
 
 const chatContainer = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
+const sidebarCollapsed = ref(false);
 
 const { locale, setLocale, t } = useI18n();
 const { theme, toggleTheme } = useTheme();
@@ -63,6 +66,14 @@ function scrollToBottom() {
   shouldAutoScroll.value = true;
 }
 
+function scrollToLatestAfterRender() {
+  nextTick(() => {
+    window.requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+  });
+}
+
 function onScroll() {
   const el = chatContainer.value;
   if (!el) return;
@@ -82,6 +93,7 @@ function deleteSession() {
 function selectSession(sessionId: string) {
   sessions.setActiveSession(sessionId);
   agent.clearPendingTurns();
+  scrollToLatestAfterRender();
 }
 
 function exportSession() {
@@ -112,17 +124,34 @@ function resendUserMessage(messageId: string) {
   agent.resendEditedText(messageId, message.content);
   maybeScrollAfterUpdate();
 }
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+onMounted(() => {
+  scrollToLatestAfterRender();
+});
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <aside class="sidebar">
       <div class="brand">
-        <div>
+        <div class="brand-copy">
           <h1>AgentBee Web</h1>
           <p>{{ t.tagline }}</p>
         </div>
         <div class="brand-controls">
+          <button
+            type="button"
+            class="icon-button"
+            :title="sidebarCollapsed ? t.expandSidebar : t.collapseSidebar"
+            @click="toggleSidebar"
+          >
+            <PanelLeftOpen v-if="sidebarCollapsed" :size="17" aria-hidden="true" />
+            <PanelLeftClose v-else :size="17" aria-hidden="true" />
+          </button>
           <button type="button" class="icon-button" :title="themeLabel" @click="toggleTheme">
             <Sun v-if="theme === 'dark'" :size="17" aria-hidden="true" />
             <Moon v-else :size="17" aria-hidden="true" />
@@ -139,39 +168,41 @@ function resendUserMessage(messageId: string) {
         </div>
       </div>
 
-      <div class="side-actions">
-        <button type="button" class="icon-text-button" :title="t.newSession" @click="sessions.createSession()">
-          <Plus :size="16" aria-hidden="true" />
-          <span>{{ t.newSession }}</span>
-        </button>
-        <button type="button" class="icon-text-button" :title="t.clearSession" @click="clearSession">
-          <Eraser :size="16" aria-hidden="true" />
-          <span>{{ t.clearSession }}</span>
-        </button>
-        <button type="button" class="icon-text-button" :title="t.exportSession" @click="exportSession">
-          <Download :size="16" aria-hidden="true" />
-          <span>{{ t.exportSession }}</span>
-        </button>
-        <button type="button" class="icon-text-button danger-action" :title="t.deleteSession" @click="deleteSession">
-          <Trash2 :size="16" aria-hidden="true" />
-          <span>{{ t.deleteSession }}</span>
-        </button>
+      <div class="sidebar-body">
+        <div class="side-actions">
+          <button type="button" class="icon-text-button" :title="t.newSession" @click="sessions.createSession()">
+            <Plus :size="16" aria-hidden="true" />
+            <span>{{ t.newSession }}</span>
+          </button>
+          <button type="button" class="icon-text-button" :title="t.clearSession" @click="clearSession">
+            <Eraser :size="16" aria-hidden="true" />
+            <span>{{ t.clearSession }}</span>
+          </button>
+          <button type="button" class="icon-text-button" :title="t.exportSession" @click="exportSession">
+            <Download :size="16" aria-hidden="true" />
+            <span>{{ t.exportSession }}</span>
+          </button>
+          <button type="button" class="icon-text-button danger-action" :title="t.deleteSession" @click="deleteSession">
+            <Trash2 :size="16" aria-hidden="true" />
+            <span>{{ t.deleteSession }}</span>
+          </button>
+        </div>
+
+        <SessionList
+          :labels="t"
+          :sessions="sessions.sessions.value"
+          :active-session-id="sessions.activeSessionId.value"
+          @select="selectSession"
+        />
+
+        <ConnectionPanel
+          v-model:url="agent.wsUrl.value"
+          :labels="t"
+          :connected="agent.connected.value"
+          @connect="agent.connect"
+          @disconnect="agent.disconnect"
+        />
       </div>
-
-      <SessionList
-        :labels="t"
-        :sessions="sessions.sessions.value"
-        :active-session-id="sessions.activeSessionId.value"
-        @select="selectSession"
-      />
-
-      <ConnectionPanel
-        v-model:url="agent.wsUrl.value"
-        :labels="t"
-        :connected="agent.connected.value"
-        @connect="agent.connect"
-        @disconnect="agent.disconnect"
-      />
     </aside>
 
     <main class="main">

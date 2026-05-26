@@ -94,6 +94,11 @@ button:disabled {
   padding: clamp(8px, 1.4vw, 16px);
   gap: clamp(8px, 1.4vw, 16px);
   min-width: 0;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.app.sidebar-collapsed {
+  grid-template-columns: 58px minmax(0, 1fr);
 }
 
 .sidebar,
@@ -112,6 +117,13 @@ button:disabled {
   overflow: hidden;
 }
 
+.sidebar-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
 .brand,
 .connection,
 .topbar,
@@ -126,6 +138,10 @@ button:disabled {
   gap: 12px;
   padding: 18px;
   border-bottom: 1px solid var(--line);
+}
+
+.brand-copy {
+  min-width: 0;
 }
 
 .brand h1 {
@@ -144,6 +160,26 @@ button:disabled {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.sidebar-collapsed .sidebar {
+  align-items: center;
+}
+
+.sidebar-collapsed .brand {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.sidebar-collapsed .brand-copy,
+.sidebar-collapsed .language-button,
+.sidebar-collapsed .sidebar-body {
+  display: none;
+}
+
+.sidebar-collapsed .brand-controls {
+  flex-direction: column;
 }
 
 .icon-button,
@@ -912,6 +948,10 @@ button:disabled {
     grid-template-columns: clamp(200px, 24vw, 240px) minmax(0, 1fr);
   }
 
+  .app.sidebar-collapsed {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
   .brand {
     padding: 14px;
   }
@@ -937,8 +977,20 @@ button:disabled {
     padding: 10px;
   }
 
+  .app.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     min-height: 320px;
+  }
+
+  .sidebar-collapsed .sidebar {
+    min-height: auto;
+  }
+
+  .sidebar-collapsed .brand {
+    justify-content: flex-start;
   }
 
   .main {

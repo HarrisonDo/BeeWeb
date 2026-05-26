@@ -51,7 +51,7 @@ The frontend now sends JSON only. All user messages use `type: "chat"` with a `c
 When images or text files are uploaded, the frontend appends more parts to the same `content` array:
 
 - Text parts use `{ "type": "text", "text": "..." }`.
-- File parts use `{ "type": "file", "file": { "text": "..." } }`.
+- File parts use `{ "type": "file", "file": { "filename": "...", "mimeType": "...", "content": "..." } }`.
 - Image parts use `{ "type": "image_url", "image_url": { "url": "data:image/..." } }`.
 
 ```json
@@ -67,7 +67,9 @@ When images or text files are uploaded, the frontend appends more parts to the s
     {
       "type": "file",
       "file": {
-        "text": "# Notes..."
+        "filename": "notes.md",
+        "mimeType": "text/markdown",
+        "content": "# Notes..."
       }
     },
     {

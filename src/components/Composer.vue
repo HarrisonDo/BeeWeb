@@ -3,8 +3,6 @@ import { Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import type { ClientAttachment } from '../protocol/types';
 
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-
 const props = defineProps<{
   disabled: boolean;
   hasPendingTurns: boolean;
@@ -89,14 +87,9 @@ async function onFileChange(event: Event) {
   const files = Array.from(input.files || []);
   if (!files.length) return;
 
-  const oversized = files.filter((file) => file.size > MAX_ATTACHMENT_BYTES);
-  const unsupported = files.filter((file) => file.size <= MAX_ATTACHMENT_BYTES && getAttachmentKind(file) === 'binary');
-  const readable = files.filter((file) => (
-    file.size <= MAX_ATTACHMENT_BYTES &&
-    getAttachmentKind(file) !== 'binary'
-  ));
+  const unsupported = files.filter((file) => getAttachmentKind(file) === 'binary');
+  const readable = files.filter((file) => getAttachmentKind(file) !== 'binary');
   uploadWarnings.value = [
-    ...oversized.map((file) => `${props.labels.fileTooLarge}: ${file.name}`),
     ...unsupported.map((file) => `${props.labels.unsupportedFile}: ${file.name}`),
   ];
   const loaded = await Promise.all(readable.map(readAttachment));

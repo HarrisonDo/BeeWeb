@@ -378,7 +378,7 @@ function createClientContentPayload(
   content: Array<
     | { type: 'text'; text: string }
     | { type: 'image_url'; image_url: { url: string } }
-    | { type: 'file'; file: { text: string } }
+    | { type: 'file'; file: { filename: string; mimeType: string; content: string } }
   >;
 } {
   const content = [
@@ -388,7 +388,9 @@ function createClientContentPayload(
       .map((attachment) => ({
         type: 'file' as const,
         file: {
-          text: attachment.text || '',
+          filename: attachment.name,
+          mimeType: attachment.type,
+          content: attachment.text || '',
         },
       })),
     ...attachments

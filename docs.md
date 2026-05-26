@@ -42,7 +42,7 @@
   "messageId": "msg-xxx",
   "content": [
     { "type": "text", "text": "用户问题" },
-    { "type": "file", "file": { "text": "文件文本" } },
+    { "type": "file", "file": { "filename": "notes.md", "mimeType": "text/markdown", "content": "文件文本" } },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
   ],
   "createdAt": "2026-05-11T10:00:00.000Z"
