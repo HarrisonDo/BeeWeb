@@ -36,6 +36,8 @@ export interface ChatAttachment {
   size: number;
   type: string;
   kind: 'text' | 'image' | 'binary';
+  text?: string;
+  base64?: string;
 }
 
 export interface ChatSession {
@@ -56,10 +58,7 @@ export interface ToolEvent {
   time: string;
 }
 
-export interface ClientAttachment extends ChatAttachment {
-  text?: string;
-  base64?: string;
-}
+export interface ClientAttachment extends ChatAttachment {}
 
 export interface ClientChatMessage {
   type: 'chat';

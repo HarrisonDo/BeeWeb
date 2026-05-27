@@ -15,6 +15,7 @@ import {
 import ChatMessage from './components/ChatMessage.vue';
 import Composer from './components/Composer.vue';
 import ConnectionPanel from './components/ConnectionPanel.vue';
+import SettingsView from './components/SettingsView.vue';
 import SessionList from './components/SessionList.vue';
 import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
@@ -22,9 +23,17 @@ import { useTheme } from './composables/useTheme';
 import { useWebSocketAgent } from './composables/useWebSocketAgent';
 import type { ClientAttachment } from './protocol/types';
 
+interface CustomModelSettings {
+  apiKey: string;
+  apiUrl: string;
+  modelName: string;
+}
+
 const chatContainer = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
 const sidebarCollapsed = ref(false);
+const currentView = ref<'chat' | 'settings'>('chat');
+const customModel = ref<CustomModelSettings>(readCustomModelSettings());
 
 const { locale, setLocale, t } = useI18n();
 const { theme, toggleTheme } = useTheme();
@@ -50,6 +59,7 @@ const themeLabel = computed(() => (
 ));
 
 function onSend(text: string, attachments: ClientAttachment[]) {
+  currentView.value = 'chat';
   agent.sendText(text, attachments);
   maybeScrollAfterUpdate();
 }
@@ -91,8 +101,15 @@ function deleteSession() {
 }
 
 function selectSession(sessionId: string) {
+  currentView.value = 'chat';
   sessions.setActiveSession(sessionId);
   agent.clearPendingTurns();
+  scrollToLatestAfterRender();
+}
+
+function createSession() {
+  currentView.value = 'chat';
+  sessions.createSession();
   scrollToLatestAfterRender();
 }
 
@@ -120,7 +137,7 @@ function resendUserMessage(messageId: string) {
     item.id === messageId &&
     item.role === 'user'
   ));
-  if (!message?.content?.trim()) return;
+  if (!message || (!message.content.trim() && !message.attachments?.length)) return;
   agent.resendEditedText(messageId, message.content);
   maybeScrollAfterUpdate();
 }
@@ -129,9 +146,44 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
+function openSettings() {
+  currentView.value = 'settings';
+}
+
+function updateCustomModel(field: keyof CustomModelSettings, value: string) {
+  customModel.value = {
+    ...customModel.value,
+    [field]: value,
+  };
+  localStorage.setItem('agentbee.customModel', JSON.stringify(customModel.value));
+}
+
+function updateWsUrl(value: string) {
+  agent.wsUrl.value = value;
+  localStorage.setItem('agentbee.lastUrl', value);
+}
+
 onMounted(() => {
   scrollToLatestAfterRender();
+  agent.startAutoConnect();
 });
+
+function readCustomModelSettings(): CustomModelSettings {
+  try {
+    const saved = JSON.parse(localStorage.getItem('agentbee.customModel') || '{}');
+    return {
+      apiKey: typeof saved.apiKey === 'string' ? saved.apiKey : '',
+      apiUrl: typeof saved.apiUrl === 'string' ? saved.apiUrl : '',
+      modelName: typeof saved.modelName === 'string' ? saved.modelName : '',
+    };
+  } catch {
+    return {
+      apiKey: '',
+      apiUrl: '',
+      modelName: '',
+    };
+  }
+}
 </script>
 
 <template>
@@ -170,7 +222,7 @@ onMounted(() => {
 
       <div class="sidebar-body">
         <div class="side-actions">
-          <button type="button" class="icon-text-button" :title="t.newSession" @click="sessions.createSession()">
+          <button type="button" class="icon-text-button" :title="t.newSession" @click="createSession">
             <Plus :size="16" aria-hidden="true" />
             <span>{{ t.newSession }}</span>
           </button>
@@ -196,11 +248,13 @@ onMounted(() => {
         />
 
         <ConnectionPanel
-          v-model:url="agent.wsUrl.value"
           :labels="t"
+          :auto-connect-paused="agent.autoConnectPaused.value"
           :connected="agent.connected.value"
+          :connecting="agent.connecting.value"
           @connect="agent.connect"
           @disconnect="agent.disconnect"
+          @open-settings="openSettings"
         />
       </div>
     </aside>
@@ -208,10 +262,10 @@ onMounted(() => {
     <main class="main">
       <header class="topbar">
         <div class="topbar-title">
-          <strong>{{ sessions.activeSession.value?.title || t.newConversation }}</strong>
+          <strong>{{ currentView === 'settings' ? t.settings : (sessions.activeSession.value?.title || t.newConversation) }}</strong>
           <span>{{ activeMeta }}</span>
         </div>
-        <div class="topbar-actions">
+        <div v-if="currentView === 'chat'" class="topbar-actions">
           <button
             type="button"
             class="icon-button"
@@ -224,7 +278,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <section ref="chatContainer" class="chat-area" @scroll="onScroll">
+      <section v-if="currentView === 'chat'" ref="chatContainer" class="chat-area" @scroll="onScroll">
         <div v-if="!sessions.activeSession.value?.messages.length" class="empty">
           {{ t.empty }}
         </div>
@@ -238,7 +292,18 @@ onMounted(() => {
         />
       </section>
 
+      <SettingsView
+        v-else
+        :ws-url="agent.wsUrl.value"
+        :connected="agent.connected.value"
+        :custom-model="customModel"
+        :labels="t"
+        @update:custom-model="updateCustomModel"
+        @update:ws-url="updateWsUrl"
+      />
+
       <Composer
+        v-if="currentView === 'chat'"
         :labels="t"
         :disabled="!agent.canSend.value"
         :has-pending-turns="agent.hasPendingTurns.value"

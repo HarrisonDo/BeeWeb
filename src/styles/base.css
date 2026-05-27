@@ -219,6 +219,11 @@ button:disabled {
   font-size: 0.8rem;
 }
 
+.side-actions button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: var(--accent-soft);
+}
+
 .side-actions button span,
 .icon-text-button span {
   min-width: 0;
@@ -294,6 +299,13 @@ button:disabled {
   gap: 10px;
 }
 
+.connection-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -344,8 +356,16 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.status-pill span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dot {
@@ -357,6 +377,14 @@ button:disabled {
 
 .dot.connected {
   background: var(--success);
+}
+
+.dot.connecting {
+  background: var(--warn);
+}
+
+.dot.paused {
+  background: var(--faint);
 }
 
 .main {
@@ -412,6 +440,79 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.settings-view {
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(14px, 2vw, 24px);
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 16px;
+  max-width: 820px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-soft) 64%, transparent);
+}
+
+.settings-section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-section-title h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  letter-spacing: 0;
+}
+
+.settings-section-title p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.settings-field > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.settings-field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+}
+
+.settings-field input:focus {
+  border-color: var(--accent);
 }
 
 .empty {
