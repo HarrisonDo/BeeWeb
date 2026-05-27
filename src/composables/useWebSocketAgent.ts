@@ -20,7 +20,7 @@ interface UseWebSocketAgentOptions {
 }
 
 export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
-  const wsUrl = ref(localStorage.getItem('agentbee.lastUrl') || 'ws://192.168.254.10:8686');
+  const wsUrl = ref(localStorage.getItem('agentbee.lastUrl') || 'ws://127.0.0.1:8686');
   const connected = ref(false);
   const pendingTurns = ref(new Map<string, string | null>());
   const socket = ref<WebSocket | null>(null);
