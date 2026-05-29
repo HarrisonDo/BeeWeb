@@ -5,7 +5,6 @@ import type { ClientAttachment } from '../protocol/types';
 
 const props = defineProps<{
   disabled: boolean;
-  hasPendingTurns: boolean;
   labels: Record<string, string>;
 }>();
 
@@ -32,14 +31,6 @@ function submit() {
   nextTick(resize);
 }
 
-function triggerPrimaryAction() {
-  if (props.hasPendingTurns) {
-    emit('stop');
-    return;
-  }
-  submit();
-}
-
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
   const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
@@ -50,7 +41,7 @@ function onKeydown(event: KeyboardEvent) {
   }
   if (!event.shiftKey) {
     event.preventDefault();
-    triggerPrimaryAction();
+    submit();
   }
 }
 
@@ -204,15 +195,20 @@ function makeAttachmentId() {
     </button>
     <button
       type="button"
-      class="send icon-text-button"
-      :class="{ stop: hasPendingTurns }"
-      :title="hasPendingTurns ? labels.stopGeneration : labels.send"
-      :disabled="disabled || (!hasPendingTurns && !text.trim() && !attachments.length)"
-      @click="triggerPrimaryAction"
+      class="stop-send icon-button"
+      :title="labels.stopGeneration"
+      @click="emit('stop')"
     >
-      <Square v-if="hasPendingTurns" :size="16" aria-hidden="true" />
-      <SendHorizontal v-else :size="17" aria-hidden="true" />
-      <span>{{ hasPendingTurns ? labels.stopGeneration : labels.send }}</span>
+      <Square :size="16" aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      class="send icon-text-button"
+      :title="labels.send"
+      @click="submit"
+    >
+      <SendHorizontal :size="17" aria-hidden="true" />
+      <span>{{ labels.send }}</span>
     </button>
   </footer>
 </template>

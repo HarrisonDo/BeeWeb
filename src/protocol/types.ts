@@ -99,10 +99,19 @@ export interface ClientStopRequest {
   messageId: string | null;
 }
 
-export type ClientMessage = ClientChatMessage | ClientHistoryRequest | ClientStopRequest;
+export type ClientSettingAct = 'getConfig' | 'getDefaultConfig' | 'saveConfig';
+
+export interface ClientSettingRequest {
+  type: 'setting';
+  act: ClientSettingAct;
+  content?: unknown;
+}
+
+export type ClientMessage = ClientChatMessage | ClientHistoryRequest | ClientStopRequest | ClientSettingRequest;
 
 export interface ServerMessage {
   type?: ServerEventType | string;
+  act?: string;
   event?: string;
   role?: string;
   sessionId?: string;

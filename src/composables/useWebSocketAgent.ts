@@ -1,5 +1,13 @@
 import { computed, ref } from 'vue';
-import type { ChatAttachment, ChatMessage, ChatSession, ClientAttachment, ClientMessage, ServerMessage } from '../protocol/types';
+import type {
+  ChatAttachment,
+  ChatMessage,
+  ChatSession,
+  ClientAttachment,
+  ClientMessage,
+  ClientSettingAct,
+  ServerMessage,
+} from '../protocol/types';
 import {
   getMessageId,
   getServerType,
@@ -16,6 +24,7 @@ const AUTO_CONNECT_RETRY_MS = 1500;
 interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
   addMessage: (role: ChatMessage['role'], content: string, extra?: Partial<ChatMessage>) => ChatMessage;
+  onSettingMessage?: (act: string, content: unknown, msg: ServerMessage) => void;
   saveSessions: () => void;
   touchSession: (session: ChatSession) => void;
   updateTitleFromMessage: (session: ChatSession, text: string) => void;
@@ -196,6 +205,15 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     finishAssistantMessage(messageId, 'stopped');
   }
 
+  function sendSettingAct(act: ClientSettingAct, content?: unknown) {
+    if (!canSend.value) {
+      options.addMessage('error', 'Not connected, setting request was not sent.');
+      return false;
+    }
+    sendJson(content === undefined ? { type: 'setting', act } : { type: 'setting', act, content });
+    return true;
+  }
+
   function clearPendingTurns() {
     clearAllNoResponseTimers();
     pendingTurns.value.clear();
@@ -216,6 +234,10 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     const type = getServerType(msg);
     const messageId = getMessageId(msg);
 
+    if (type === 'setting') {
+      options.onSettingMessage?.(String(msg.act || ''), msg.content ?? msg.data ?? msg.message ?? '', msg);
+      return;
+    }
     if (type === 'history') return;
     if (['content', 'assistant', 'message'].includes(type)) return appendAssistantContent(messageId, normalizePayload(msg));
     if (['think', 'thinking', 'status'].includes(type)) return appendAssistantThink(messageId, normalizePayload(msg));
@@ -410,6 +432,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     autoConnectPaused,
     hasPendingTurns,
     resendEditedText,
+    sendSettingAct,
     sendText,
     startAutoConnect,
     stopCurrent,

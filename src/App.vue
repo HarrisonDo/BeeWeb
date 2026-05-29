@@ -21,19 +21,23 @@ import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
 import { useTheme } from './composables/useTheme';
 import { useWebSocketAgent } from './composables/useWebSocketAgent';
-import type { ClientAttachment } from './protocol/types';
+import type { ClientAttachment, ClientSettingAct, ServerMessage } from './protocol/types';
 
-interface CustomModelSettings {
+interface BasicSettings {
   apiKey: string;
   apiUrl: string;
   modelName: string;
+  wsUrl: string;
 }
 
 const chatContainer = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
 const sidebarCollapsed = ref(false);
 const currentView = ref<'chat' | 'settings'>('chat');
-const customModel = ref<CustomModelSettings>(readCustomModelSettings());
+const agentConfig = ref<Record<string, unknown>>(readAgentConfig());
+const configJson = ref(JSON.stringify(agentConfig.value, null, 2));
+const configJsonError = ref('');
+const settingStatus = ref('');
 
 const { locale, setLocale, t } = useI18n();
 const { theme, toggleTheme } = useTheme();
@@ -44,10 +48,12 @@ sessions.loadSessions();
 const agent = useWebSocketAgent({
   activeSession: () => sessions.activeSession.value,
   addMessage: sessions.addMessage,
+  onSettingMessage: handleSettingMessage,
   saveSessions: sessions.saveSessions,
   touchSession: sessions.touchSession,
   updateTitleFromMessage: sessions.updateTitleFromMessage,
 });
+syncWsUrlFromConfig(agentConfig.value);
 
 const activeMeta = computed(() => {
   const url = agent.wsUrl.value.trim() || t.value.noUrl;
@@ -150,17 +156,131 @@ function openSettings() {
   currentView.value = 'settings';
 }
 
-function updateCustomModel(field: keyof CustomModelSettings, value: string) {
-  customModel.value = {
-    ...customModel.value,
-    [field]: value,
-  };
-  localStorage.setItem('agentbee.customModel', JSON.stringify(customModel.value));
-}
-
 function updateWsUrl(value: string) {
   agent.wsUrl.value = value;
   localStorage.setItem('agentbee.lastUrl', value);
+}
+
+const basicSettings = computed<BasicSettings>(() => ({
+  apiKey: readString(agentConfig.value, ['agent_llm', 'api_key']),
+  apiUrl: readString(agentConfig.value, ['agent_llm', 'api_url']),
+  modelName: readString(agentConfig.value, ['agent_llm', 'model']),
+  wsUrl: agent.wsUrl.value,
+}));
+
+function updateBasicSetting(field: keyof BasicSettings, value: string) {
+  const nextConfig = structuredClone(agentConfig.value);
+  if (field === 'wsUrl') {
+    updateAgentServerFromWsUrl(nextConfig, value);
+    updateWsUrl(value);
+  }
+  if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], value);
+  if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], value);
+  if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], value);
+  persistAgentConfig(nextConfig);
+}
+
+function updateConfigJson(value: string) {
+  configJson.value = value;
+  try {
+    const parsed = JSON.parse(value);
+    if (!isRecord(parsed)) {
+      configJsonError.value = t.value.configJsonObjectError;
+      return;
+    }
+    configJsonError.value = '';
+    persistAgentConfig(parsed, false);
+    syncWsUrlFromConfig(parsed);
+  } catch (error) {
+    configJsonError.value = error instanceof Error ? error.message : t.value.configJsonParseError;
+  }
+}
+
+function requestServerConfig() {
+  sendSettingRequest('getConfig');
+}
+
+function requestDefaultServerConfig() {
+  sendSettingRequest('getDefaultConfig');
+}
+
+function saveServerConfig() {
+  const parsed = parseConfigJson(configJson.value);
+  if (!parsed) return;
+  persistAgentConfig(parsed, false);
+  syncWsUrlFromConfig(parsed);
+  sendSettingRequest('saveConfig', parsed);
+}
+
+function sendSettingRequest(act: ClientSettingAct, content?: unknown) {
+  const sent = agent.sendSettingAct(act, content);
+  if (!sent) return;
+  settingStatus.value = `${t.value.settingRequestSent}: ${act}`;
+}
+
+function handleSettingMessage(act: string, content: unknown, msg: ServerMessage) {
+  const config = parseSettingConfig(content);
+  if (config && (act === 'getConfig' || act === 'getDefaultConfig' || !act)) {
+    configJsonError.value = '';
+    persistAgentConfig(mergeAgentConfig(createDefaultAgentConfig(), config));
+    syncWsUrlFromConfig(agentConfig.value);
+    settingStatus.value = act === 'getDefaultConfig'
+      ? t.value.defaultConfigLoaded
+      : t.value.serverConfigLoaded;
+    return;
+  }
+
+  if (act === 'saveConfig') {
+    settingStatus.value = t.value.serverConfigSaved;
+    return;
+  }
+
+  settingStatus.value = msg.message || t.value.settingResponseReceived;
+}
+
+function parseConfigJson(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value);
+    if (!isRecord(parsed)) {
+      configJsonError.value = t.value.configJsonObjectError;
+      return null;
+    }
+    configJsonError.value = '';
+    return parsed;
+  } catch (error) {
+    configJsonError.value = error instanceof Error ? error.message : t.value.configJsonParseError;
+    return null;
+  }
+}
+
+function parseSettingConfig(value: unknown): Record<string, unknown> | null {
+  if (isRecord(value)) return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function syncWsUrlFromConfig(config: Record<string, unknown>) {
+  const host = readString(config, ['agent_server', 'host']) || '127.0.0.1';
+  const port = readNumber(config, ['agent_server', 'port'], 8686);
+  updateWsUrl(`ws://${host}:${port}`);
+}
+
+function updateAgentServerFromWsUrl(config: Record<string, unknown>, value: string) {
+  try {
+    const parsed = new URL(value);
+    setNestedValue(config, ['agent_server', 'host'], parsed.hostname || '127.0.0.1');
+    setNestedValue(config, ['agent_server', 'port'], parsed.port ? Number(parsed.port) : 8686);
+  } catch {
+    const trimmed = value.replace(/^wss?:\/\//, '');
+    const [host, port] = trimmed.split(':');
+    setNestedValue(config, ['agent_server', 'host'], host || '127.0.0.1');
+    setNestedValue(config, ['agent_server', 'port'], port ? Number(port) : 8686);
+  }
 }
 
 onMounted(() => {
@@ -168,21 +288,117 @@ onMounted(() => {
   agent.startAutoConnect();
 });
 
-function readCustomModelSettings(): CustomModelSettings {
+function readAgentConfig(): Record<string, unknown> {
+  const defaults = createDefaultAgentConfig();
   try {
-    const saved = JSON.parse(localStorage.getItem('agentbee.customModel') || '{}');
-    return {
-      apiKey: typeof saved.apiKey === 'string' ? saved.apiKey : '',
-      apiUrl: typeof saved.apiUrl === 'string' ? saved.apiUrl : '',
-      modelName: typeof saved.modelName === 'string' ? saved.modelName : '',
-    };
+    const saved = JSON.parse(localStorage.getItem('agentbee.agentConfig') || 'null');
+    if (isRecord(saved)) return mergeAgentConfig(defaults, saved);
   } catch {
-    return {
-      apiKey: '',
-      apiUrl: '',
-      modelName: '',
-    };
   }
+  return defaults;
+}
+
+function persistAgentConfig(nextConfig: Record<string, unknown>, syncJson = true) {
+  agentConfig.value = nextConfig;
+  localStorage.setItem('agentbee.agentConfig', JSON.stringify(nextConfig));
+  if (syncJson) configJson.value = JSON.stringify(nextConfig, null, 2);
+}
+
+function createDefaultAgentConfig(): Record<string, unknown> {
+  return {
+    agent_server: {
+      host: '127.0.0.1',
+      port: 8686,
+      ping_interval: 60,
+    },
+    agent_llm: {
+      provider: 'agent_openai',
+      work_name: 'procWorker',
+      api_url: 'http://127.0.0.1:1234/v1',
+      api_key: 'sk-lm-J78sqMgX:IUMBn3qsotGyfViPMaRS',
+      model: 'qwen3.6-35b-a3b-mtp-apex',
+      org_id: '',
+      timeout: 7200,
+      keep_reasons: false,
+      params: {
+        max_tokens: 32768,
+        temperature: 0.8,
+        min_p: 0.05,
+        top_p: 0.9,
+        frequency_penalty: 0,
+        presence_penalty: 0.5,
+        stop: [],
+        extra_body: {
+          thinking: false,
+          chat_template_kwargs: {
+            enable_thinking: false,
+          },
+        },
+        thinking: {
+          type: 'disabled',
+        },
+      },
+    },
+    agent_task: {
+      provider: 'agent_mem_db',
+    },
+    agent_memory: {
+      provider: 'agent_mem_db',
+      max_history: 30,
+    },
+    agent_tools: {
+      enabled: true,
+      in_sandbox: true,
+      workspace_path: '',
+      list: [
+        { name: 'agent_mem_db' },
+        { name: 'agent_tools' },
+        { name: 'agent_claw' },
+      ],
+    },
+    memory_limit: '4G',
+    debug: false,
+  };
+}
+
+function mergeAgentConfig(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base };
+  Object.entries(override).forEach(([key, value]) => {
+    const current = merged[key];
+    merged[key] = isRecord(current) && isRecord(value)
+      ? mergeAgentConfig(current, value)
+      : value;
+  });
+  return merged;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function readString(source: Record<string, unknown>, path: string[]): string {
+  const value = readNestedValue(source, path);
+  return typeof value === 'string' ? value : '';
+}
+
+function readNumber(source: Record<string, unknown>, path: string[], fallback: number): number {
+  const value = readNestedValue(source, path);
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readNestedValue(source: Record<string, unknown>, path: string[]): unknown {
+  return path.reduce<unknown>((current, key) => (
+    isRecord(current) ? current[key] : undefined
+  ), source);
+}
+
+function setNestedValue(source: Record<string, unknown>, path: string[], value: unknown) {
+  let current = source;
+  path.slice(0, -1).forEach((key) => {
+    if (!isRecord(current[key])) current[key] = {};
+    current = current[key] as Record<string, unknown>;
+  });
+  current[path[path.length - 1]] = value;
 }
 </script>
 
@@ -294,19 +510,23 @@ function readCustomModelSettings(): CustomModelSettings {
 
       <SettingsView
         v-else
-        :ws-url="agent.wsUrl.value"
+        :basic-settings="basicSettings"
         :connected="agent.connected.value"
-        :custom-model="customModel"
+        :config-json="configJson"
+        :config-json-error="configJsonError"
         :labels="t"
-        @update:custom-model="updateCustomModel"
-        @update:ws-url="updateWsUrl"
+        :setting-status="settingStatus"
+        @get-config="requestServerConfig"
+        @get-default-config="requestDefaultServerConfig"
+        @save-config="saveServerConfig"
+        @update:basic-setting="updateBasicSetting"
+        @update:config-json="updateConfigJson"
       />
 
       <Composer
         v-if="currentView === 'chat'"
         :labels="t"
         :disabled="!agent.canSend.value"
-        :has-pending-turns="agent.hasPendingTurns.value"
         @send="onSend"
         @stop="agent.stopCurrent"
       />

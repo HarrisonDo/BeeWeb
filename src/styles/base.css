@@ -486,6 +486,25 @@ button:disabled {
   gap: 12px;
 }
 
+.settings-grid.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-actions .icon-text-button {
+  min-height: 36px;
+}
+
+.settings-actions .primary-action {
+  color: #ffffff;
+  background: var(--success);
+}
+
 .settings-field {
   display: grid;
   gap: 7px;
@@ -500,7 +519,8 @@ button:disabled {
   font-size: 0.76rem;
 }
 
-.settings-field input {
+.settings-field input,
+.settings-field textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
@@ -511,8 +531,37 @@ button:disabled {
   outline: none;
 }
 
-.settings-field input:focus {
+.settings-field input:focus,
+.settings-field textarea:focus {
   border-color: var(--accent);
+}
+
+.settings-json {
+  min-height: 420px;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.settings-error {
+  border: 1px solid color-mix(in srgb, var(--danger) 36%, transparent);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.78rem;
+}
+
+.settings-status {
+  border: 1px solid color-mix(in srgb, var(--success) 32%, transparent);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 0.78rem;
 }
 
 .empty {
@@ -975,7 +1024,7 @@ button:disabled {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 10px;
   padding: clamp(10px, 1.4vw, 14px) clamp(10px, 1.6vw, 18px);
   border-top: 1px solid var(--line);
@@ -1040,7 +1089,11 @@ button:disabled {
   background: var(--success);
 }
 
-.send.stop {
+.stop-send {
+  align-self: stretch;
+  width: 44px;
+  height: auto;
+  color: #ffffff;
   background: var(--danger);
 }
 
@@ -1063,6 +1116,10 @@ button:disabled {
 
   .message {
     max-width: 92%;
+  }
+
+  .settings-grid.two-column {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1133,6 +1190,7 @@ button:disabled {
   }
 
   .attach-button,
+  .stop-send,
   .send {
     width: 100%;
     min-height: 42px;
