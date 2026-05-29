@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bot, Code2, DownloadCloud, KeyRound, Link, RotateCcw, Save, Server } from 'lucide-vue-next';
+import { Bot, Code2, DownloadCloud, KeyRound, Link, ListRestart, RotateCcw, Save, Server } from 'lucide-vue-next';
 
 interface BasicSettings {
   apiKey: string;
@@ -9,6 +9,7 @@ interface BasicSettings {
 }
 
 defineProps<{
+  availableModels: string[];
   basicSettings: BasicSettings;
   connected: boolean;
   configJson: string;
@@ -20,6 +21,7 @@ defineProps<{
 const emit = defineEmits<{
   getConfig: [];
   getDefaultConfig: [];
+  getModels: [];
   saveConfig: [];
   'update:basicSetting': [field: keyof BasicSettings, value: string];
   'update:configJson': [value: string];
@@ -83,13 +85,22 @@ const emit = defineEmits<{
             <Bot :size="14" aria-hidden="true" />
             {{ labels.modelName }}
           </span>
-          <input
-            id="customModelName"
-            :value="basicSettings.modelName"
-            type="text"
-            placeholder="model-name"
-            @input="emit('update:basicSetting', 'modelName', ($event.target as HTMLInputElement).value)"
-          />
+          <div class="settings-inline-control">
+            <input
+              id="customModelName"
+              :value="basicSettings.modelName"
+              :list="availableModels.length ? 'availableModels' : undefined"
+              type="text"
+              placeholder="model-name"
+              @input="emit('update:basicSetting', 'modelName', ($event.target as HTMLInputElement).value)"
+            />
+            <button type="button" class="icon-button" :title="labels.getModels" @click="emit('getModels')">
+              <ListRestart :size="15" aria-hidden="true" />
+            </button>
+          </div>
+          <datalist v-if="availableModels.length" id="availableModels">
+            <option v-for="model in availableModels" :key="model" :value="model" />
+          </datalist>
         </label>
       </div>
     </div>

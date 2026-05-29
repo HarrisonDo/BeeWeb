@@ -103,11 +103,28 @@ export type ClientSettingAct = 'getConfig' | 'getDefaultConfig' | 'saveConfig';
 
 export interface ClientSettingRequest {
   type: 'setting';
-  act: ClientSettingAct;
-  content?: unknown;
+  content: {
+    act: ClientSettingAct;
+    data?: unknown;
+  };
 }
 
-export type ClientMessage = ClientChatMessage | ClientHistoryRequest | ClientStopRequest | ClientSettingRequest;
+export type ClientSystemAct = 'getModels';
+
+export interface ClientSystemRequest {
+  type: 'system';
+  content: {
+    act: ClientSystemAct;
+    data?: unknown;
+  };
+}
+
+export type ClientMessage =
+  | ClientChatMessage
+  | ClientHistoryRequest
+  | ClientStopRequest
+  | ClientSettingRequest
+  | ClientSystemRequest;
 
 export interface ServerMessage {
   type?: ServerEventType | string;

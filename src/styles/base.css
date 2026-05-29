@@ -536,6 +536,17 @@ button:disabled {
   border-color: var(--accent);
 }
 
+.settings-inline-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.settings-inline-control .icon-button {
+  width: 40px;
+  height: 40px;
+}
+
 .settings-json {
   min-height: 420px;
   resize: vertical;

@@ -38,6 +38,7 @@ const agentConfig = ref<Record<string, unknown>>(readAgentConfig());
 const configJson = ref(JSON.stringify(agentConfig.value, null, 2));
 const configJsonError = ref('');
 const settingStatus = ref('');
+const availableModels = ref<string[]>([]);
 
 const { locale, setLocale, t } = useI18n();
 const { theme, toggleTheme } = useTheme();
@@ -49,6 +50,7 @@ const agent = useWebSocketAgent({
   activeSession: () => sessions.activeSession.value,
   addMessage: sessions.addMessage,
   onSettingMessage: handleSettingMessage,
+  onSystemMessage: handleSystemMessage,
   saveSessions: sessions.saveSessions,
   touchSession: sessions.touchSession,
   updateTitleFromMessage: sessions.updateTitleFromMessage,
@@ -212,6 +214,12 @@ function saveServerConfig() {
   sendSettingRequest('saveConfig', parsed);
 }
 
+function requestModels() {
+  const sent = agent.sendSystemAct('getModels');
+  if (!sent) return;
+  settingStatus.value = `${t.value.systemRequestSent}: getModels`;
+}
+
 function sendSettingRequest(act: ClientSettingAct, content?: unknown) {
   const sent = agent.sendSettingAct(act, content);
   if (!sent) return;
@@ -238,6 +246,19 @@ function handleSettingMessage(act: string, content: unknown, msg: ServerMessage)
   settingStatus.value = msg.message || t.value.settingResponseReceived;
 }
 
+function handleSystemMessage(act: string, content: unknown, msg: ServerMessage) {
+  if (act === 'getModels') {
+    const models = parseModels(content);
+    if (models.length) {
+      availableModels.value = models;
+      settingStatus.value = `${t.value.modelsLoaded}: ${models.length}`;
+      return;
+    }
+  }
+
+  settingStatus.value = msg.message || t.value.systemResponseReceived;
+}
+
 function parseConfigJson(value: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(value);
@@ -262,6 +283,26 @@ function parseSettingConfig(value: unknown): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function parseModels(value: unknown): string[] {
+  const rawModels = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.models)
+      ? value.models
+      : isRecord(value) && Array.isArray(value.data)
+        ? value.data
+        : [];
+
+  return rawModels
+    .map((item) => {
+      if (typeof item === 'string') return item;
+      if (isRecord(item) && typeof item.id === 'string') return item.id;
+      if (isRecord(item) && typeof item.name === 'string') return item.name;
+      if (isRecord(item) && typeof item.model === 'string') return item.model;
+      return '';
+    })
+    .filter((item, index, all) => item && all.indexOf(item) === index);
 }
 
 function syncWsUrlFromConfig(config: Record<string, unknown>) {
@@ -511,11 +552,13 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
       <SettingsView
         v-else
         :basic-settings="basicSettings"
+        :available-models="availableModels"
         :connected="agent.connected.value"
         :config-json="configJson"
         :config-json-error="configJsonError"
         :labels="t"
         :setting-status="settingStatus"
+        @get-models="requestModels"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
         @save-config="saveServerConfig"

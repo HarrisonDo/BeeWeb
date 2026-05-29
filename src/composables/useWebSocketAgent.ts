@@ -6,6 +6,7 @@ import type {
   ClientAttachment,
   ClientMessage,
   ClientSettingAct,
+  ClientSystemAct,
   ServerMessage,
 } from '../protocol/types';
 import {
@@ -25,6 +26,7 @@ interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
   addMessage: (role: ChatMessage['role'], content: string, extra?: Partial<ChatMessage>) => ChatMessage;
   onSettingMessage?: (act: string, content: unknown, msg: ServerMessage) => void;
+  onSystemMessage?: (act: string, content: unknown, msg: ServerMessage) => void;
   saveSessions: () => void;
   touchSession: (session: ChatSession) => void;
   updateTitleFromMessage: (session: ChatSession, text: string) => void;
@@ -210,7 +212,22 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       options.addMessage('error', 'Not connected, setting request was not sent.');
       return false;
     }
-    sendJson(content === undefined ? { type: 'setting', act } : { type: 'setting', act, content });
+    sendJson({
+      type: 'setting',
+      content: content === undefined ? { act } : { act, data: content },
+    });
+    return true;
+  }
+
+  function sendSystemAct(act: ClientSystemAct, content?: unknown) {
+    if (!canSend.value) {
+      options.addMessage('error', 'Not connected, system request was not sent.');
+      return false;
+    }
+    sendJson({
+      type: 'system',
+      content: content === undefined ? { act } : { act, data: content },
+    });
     return true;
   }
 
@@ -235,7 +252,13 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     const messageId = getMessageId(msg);
 
     if (type === 'setting') {
-      options.onSettingMessage?.(String(msg.act || ''), msg.content ?? msg.data ?? msg.message ?? '', msg);
+      const { act, content } = unwrapActContent(msg);
+      options.onSettingMessage?.(act, content, msg);
+      return;
+    }
+    if (type === 'system') {
+      const { act, content } = unwrapActContent(msg);
+      options.onSystemMessage?.(act, content, msg);
       return;
     }
     if (type === 'history') return;
@@ -433,10 +456,26 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     hasPendingTurns,
     resendEditedText,
     sendSettingAct,
+    sendSystemAct,
     sendText,
     startAutoConnect,
     stopCurrent,
     wsUrl,
+  };
+}
+
+function unwrapActContent(msg: ServerMessage): { act: string; content: unknown } {
+  const content = msg.content;
+  if (isRecord(content)) {
+    return {
+      act: asString(content.act) || msg.act || '',
+      content: content.data ?? content.config ?? content.models ?? content.result ?? content,
+    };
+  }
+
+  return {
+    act: msg.act || '',
+    content: msg.content ?? msg.data ?? msg.message ?? '',
   };
 }
 
@@ -446,6 +485,14 @@ function hasAssistantOutput(message: ChatMessage): boolean {
     message.think?.trim() ||
     message.toolEvents?.length,
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 function toChatAttachments(attachments: ClientAttachment[]): ChatAttachment[] {
