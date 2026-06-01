@@ -443,12 +443,33 @@ button:disabled {
 }
 
 .settings-view {
+  position: relative;
   min-height: 0;
   overflow-y: auto;
   padding: clamp(14px, 2vw, 24px);
   display: grid;
   align-content: start;
   gap: 16px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 820px;
+  min-width: 0;
+}
+
+.settings-header .settings-section-title {
+  min-width: 0;
+}
+
+.settings-close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  background: var(--surface-raised);
 }
 
 .settings-section {
@@ -503,6 +524,39 @@ button:disabled {
 .settings-actions .primary-action {
   color: #ffffff;
   background: var(--success);
+}
+
+.settings-collapse {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.settings-collapse:hover {
+  color: var(--accent);
+}
+
+.settings-collapse-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.settings-collapse-body {
+  display: grid;
+  gap: 12px;
 }
 
 .settings-field {

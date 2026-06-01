@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, toRaw, watch } from 'vue';
 import {
   ArrowDownToLine,
   Download,
@@ -56,6 +56,9 @@ const agent = useWebSocketAgent({
   updateTitleFromMessage: sessions.updateTitleFromMessage,
 });
 syncWsUrlFromConfig(agentConfig.value);
+watch(() => agent.canSend.value, (canSend) => {
+  if (canSend) requestServerConfigIfNeeded();
+});
 
 const activeMeta = computed(() => {
   const url = agent.wsUrl.value.trim() || t.value.noUrl;
@@ -154,8 +157,20 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
+let settingsConfigRequested = false;
+
 function openSettings() {
+  refreshConfigJson();
+  configJsonError.value = '';
+  settingStatus.value = '';
+  settingsConfigRequested = false;
   currentView.value = 'settings';
+  requestServerConfigIfNeeded();
+}
+
+function closeSettings() {
+  currentView.value = 'chat';
+  scrollToLatestAfterRender();
 }
 
 function updateWsUrl(value: string) {
@@ -167,19 +182,19 @@ const basicSettings = computed<BasicSettings>(() => ({
   apiKey: readString(agentConfig.value, ['agent_llm', 'api_key']),
   apiUrl: readString(agentConfig.value, ['agent_llm', 'api_url']),
   modelName: readString(agentConfig.value, ['agent_llm', 'model']),
-  wsUrl: agent.wsUrl.value,
+  wsUrl: getWsUrlFromConfig(agentConfig.value),
 }));
 
 function updateBasicSetting(field: keyof BasicSettings, value: string) {
-  const nextConfig = structuredClone(agentConfig.value);
+  const nextConfig = cloneConfig(agentConfig.value);
   if (field === 'wsUrl') {
     updateAgentServerFromWsUrl(nextConfig, value);
-    updateWsUrl(value);
   }
   if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], value);
   if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], value);
   if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], value);
-  persistAgentConfig(nextConfig);
+  applyAgentConfig(nextConfig, { syncJson: true, syncWs: true });
+  configJsonError.value = '';
 }
 
 function updateConfigJson(value: string) {
@@ -191,8 +206,7 @@ function updateConfigJson(value: string) {
       return;
     }
     configJsonError.value = '';
-    persistAgentConfig(parsed, false);
-    syncWsUrlFromConfig(parsed);
+    applyAgentConfig(parsed, { syncJson: false, syncWs: true });
   } catch (error) {
     configJsonError.value = error instanceof Error ? error.message : t.value.configJsonParseError;
   }
@@ -202,6 +216,12 @@ function requestServerConfig() {
   sendSettingRequest('getConfig');
 }
 
+function requestServerConfigIfNeeded() {
+  if (currentView.value !== 'settings' || settingsConfigRequested || !agent.canSend.value) return;
+  settingsConfigRequested = true;
+  requestServerConfig();
+}
+
 function requestDefaultServerConfig() {
   sendSettingRequest('getDefaultConfig');
 }
@@ -209,8 +229,7 @@ function requestDefaultServerConfig() {
 function saveServerConfig() {
   const parsed = parseConfigJson(configJson.value);
   if (!parsed) return;
-  persistAgentConfig(parsed, false);
-  syncWsUrlFromConfig(parsed);
+  applyAgentConfig(parsed, { syncJson: false, syncWs: true });
   sendSettingRequest('saveConfig', parsed);
 }
 
@@ -230,8 +249,7 @@ function handleSettingMessage(act: string, content: unknown, msg: ServerMessage)
   const config = parseSettingConfig(content);
   if (config && (act === 'getConfig' || act === 'getDefaultConfig' || !act)) {
     configJsonError.value = '';
-    persistAgentConfig(mergeAgentConfig(createDefaultAgentConfig(), config));
-    syncWsUrlFromConfig(agentConfig.value);
+    applyAgentConfig(config, { syncJson: true, syncWs: true });
     settingStatus.value = act === 'getDefaultConfig'
       ? t.value.defaultConfigLoaded
       : t.value.serverConfigLoaded;
@@ -286,29 +304,57 @@ function parseSettingConfig(value: unknown): Record<string, unknown> | null {
 }
 
 function parseModels(value: unknown): string[] {
-  const rawModels = Array.isArray(value)
-    ? value
-    : isRecord(value) && Array.isArray(value.models)
-      ? value.models
-      : isRecord(value) && Array.isArray(value.data)
-        ? value.data
-        : [];
+  const models = new Set<string>();
+  const seen = new WeakSet<object>();
 
-  return rawModels
-    .map((item) => {
-      if (typeof item === 'string') return item;
-      if (isRecord(item) && typeof item.id === 'string') return item.id;
-      if (isRecord(item) && typeof item.name === 'string') return item.name;
-      if (isRecord(item) && typeof item.model === 'string') return item.model;
-      return '';
-    })
-    .filter((item, index, all) => item && all.indexOf(item) === index);
+  function visit(node: unknown, key = '', depth = 0) {
+    if (depth > 6 || node == null) return;
+    if (typeof node === 'object') {
+      if (seen.has(node as object)) return;
+      seen.add(node as object);
+    }
+    if (typeof node === 'string') {
+      if (!key || isModelKey(key) || looksLikeModelName(node)) models.add(node);
+      return;
+    }
+    if (typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach((item) => visit(item, key, depth + 1));
+      return;
+    }
+    Object.entries(node).forEach(([entryKey, entryValue]) => {
+      if (typeof entryValue === 'string' && isModelKey(entryKey)) {
+        models.add(entryValue);
+      }
+      if (Array.isArray(entryValue) || isRecord(entryValue)) {
+        visit(entryValue, entryKey, depth + 1);
+      } else if (typeof entryValue === 'string' && !isModelKey(entryKey)) {
+        if (looksLikeModelName(entryValue)) models.add(entryValue);
+      }
+    });
+  }
+
+  visit(value);
+  return Array.from(models);
+}
+
+function isModelKey(key: string) {
+  const normalized = key.toLowerCase();
+  return ['id', 'name', 'model', 'model_name', 'modelname', 'value', 'label', 'title'].includes(normalized);
+}
+
+function looksLikeModelName(value: string) {
+  return /^[\w.-]{2,}$/.test(value) && /[a-z0-9]/i.test(value);
 }
 
 function syncWsUrlFromConfig(config: Record<string, unknown>) {
+  updateWsUrl(getWsUrlFromConfig(config));
+}
+
+function getWsUrlFromConfig(config: Record<string, unknown>) {
   const host = readString(config, ['agent_server', 'host']) || '127.0.0.1';
-  const port = readNumber(config, ['agent_server', 'port'], 8686);
-  updateWsUrl(`ws://${host}:${port}`);
+  const port = readPort(config, ['agent_server', 'port'], '8686');
+  return port ? `ws://${host}:${port}` : `ws://${host}`;
 }
 
 function updateAgentServerFromWsUrl(config: Record<string, unknown>, value: string) {
@@ -339,10 +385,28 @@ function readAgentConfig(): Record<string, unknown> {
   return defaults;
 }
 
-function persistAgentConfig(nextConfig: Record<string, unknown>, syncJson = true) {
-  agentConfig.value = nextConfig;
-  localStorage.setItem('agentbee.agentConfig', JSON.stringify(nextConfig));
-  if (syncJson) configJson.value = JSON.stringify(nextConfig, null, 2);
+function applyAgentConfig(
+  nextConfig: Record<string, unknown>,
+  options: { syncJson?: boolean; syncWs?: boolean } = {},
+) {
+  const syncJson = options.syncJson ?? true;
+  const syncWs = options.syncWs ?? true;
+  agentConfig.value = cloneConfig(nextConfig);
+  localStorage.setItem('agentbee.agentConfig', stringifyConfig(agentConfig.value));
+  if (syncWs) syncWsUrlFromConfig(agentConfig.value);
+  if (syncJson) refreshConfigJson();
+}
+
+function refreshConfigJson() {
+  configJson.value = stringifyConfig(agentConfig.value);
+}
+
+function stringifyConfig(config: Record<string, unknown>) {
+  return JSON.stringify(toRaw(config), null, 2);
+}
+
+function cloneConfig(config: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(stringifyConfig(config)) as Record<string, unknown>;
 }
 
 function createDefaultAgentConfig(): Record<string, unknown> {
@@ -422,9 +486,11 @@ function readString(source: Record<string, unknown>, path: string[]): string {
   return typeof value === 'string' ? value : '';
 }
 
-function readNumber(source: Record<string, unknown>, path: string[], fallback: number): number {
+function readPort(source: Record<string, unknown>, path: string[], fallback: string): string {
   const value = readNestedValue(source, path);
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'string') return value.trim();
+  return fallback;
 }
 
 function readNestedValue(source: Record<string, unknown>, path: string[]): unknown {
@@ -559,6 +625,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :labels="t"
         :setting-status="settingStatus"
         @get-models="requestModels"
+        @close="closeSettings"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
         @save-config="saveServerConfig"

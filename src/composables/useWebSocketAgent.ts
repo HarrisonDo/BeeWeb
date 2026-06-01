@@ -467,9 +467,13 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
 function unwrapActContent(msg: ServerMessage): { act: string; content: unknown } {
   const content = msg.content;
   if (isRecord(content)) {
+    const act = asString(content.act) || msg.act || '';
+    const nestedContent = content.data ?? content.config ?? content.models ?? content.result;
+    if (nestedContent !== undefined) return { act, content: nestedContent };
+    const { act: _act, ...contentWithoutAct } = content;
     return {
-      act: asString(content.act) || msg.act || '',
-      content: content.data ?? content.config ?? content.models ?? content.result ?? content,
+      act,
+      content: Object.keys(contentWithoutAct).length ? contentWithoutAct : '',
     };
   }
 

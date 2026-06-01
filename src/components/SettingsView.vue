@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Bot, Code2, DownloadCloud, KeyRound, Link, ListRestart, RotateCcw, Save, Server } from 'lucide-vue-next';
+import { Bot, ChevronDown, ChevronRight, Code2, DownloadCloud, KeyRound, Link, ListRestart, RotateCcw, Save, Server, X } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 interface BasicSettings {
   apiKey: string;
@@ -19,6 +20,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  close: [];
   getConfig: [];
   getDefaultConfig: [];
   getModels: [];
@@ -26,18 +28,26 @@ const emit = defineEmits<{
   'update:basicSetting': [field: keyof BasicSettings, value: string];
   'update:configJson': [value: string];
 }>();
+
+const advancedExpanded = ref(false);
 </script>
 
 <template>
   <section class="settings-view">
-    <div class="settings-section">
+    <div class="settings-header">
       <div class="settings-section-title">
         <Link :size="17" aria-hidden="true" />
         <div>
-          <h2>{{ labels.defaultSettings }}</h2>
+          <h2>{{ labels.settings }}</h2>
           <p>{{ labels.defaultSettingsHint }}</p>
         </div>
       </div>
+      <button type="button" class="settings-close icon-button" :title="labels.closeSettings" @click="emit('close')">
+        <X :size="17" aria-hidden="true" />
+      </button>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-grid two-column">
         <label class="settings-field" for="agentServerWsUrl">
           <span>
@@ -103,16 +113,6 @@ const emit = defineEmits<{
           </datalist>
         </label>
       </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">
-        <Code2 :size="17" aria-hidden="true" />
-        <div>
-          <h2>{{ labels.advancedJsonSettings }}</h2>
-          <p>{{ labels.advancedJsonSettingsHint }}</p>
-        </div>
-      </div>
       <div class="settings-actions">
         <button type="button" class="icon-text-button" @click="emit('getConfig')">
           <DownloadCloud :size="15" aria-hidden="true" />
@@ -127,6 +127,25 @@ const emit = defineEmits<{
           <span>{{ labels.saveConfig }}</span>
         </button>
       </div>
+      <div v-if="configJsonError" class="settings-error" role="status">{{ configJsonError }}</div>
+      <div v-else-if="settingStatus" class="settings-status" role="status">{{ settingStatus }}</div>
+    </div>
+
+    <div class="settings-section">
+      <button type="button" class="settings-collapse" @click="advancedExpanded = !advancedExpanded">
+        <div class="settings-section-title">
+          <Code2 :size="17" aria-hidden="true" />
+          <div>
+            <h2>{{ labels.advancedJsonSettings }}</h2>
+            <p>{{ labels.advancedJsonSettingsHint }}</p>
+          </div>
+        </div>
+        <span class="settings-collapse-icon" :title="advancedExpanded ? labels.collapse : labels.expand">
+          <ChevronDown v-if="advancedExpanded" :size="16" aria-hidden="true" />
+          <ChevronRight v-else :size="16" aria-hidden="true" />
+        </span>
+      </button>
+      <div v-show="advancedExpanded" class="settings-collapse-body">
       <label class="settings-field" for="advancedConfigJson">
         <span>{{ labels.fullConfigJson }}</span>
         <textarea
@@ -137,8 +156,7 @@ const emit = defineEmits<{
           @input="emit('update:configJson', ($event.target as HTMLTextAreaElement).value)"
         ></textarea>
       </label>
-      <div v-if="configJsonError" class="settings-error" role="status">{{ configJsonError }}</div>
-      <div v-else-if="settingStatus" class="settings-status" role="status">{{ settingStatus }}</div>
+      </div>
     </div>
   </section>
 </template>
