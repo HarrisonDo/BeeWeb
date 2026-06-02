@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { Wrench } from 'lucide-vue-next';
 import type { ToolEvent } from '../protocol/types';
 
 const props = defineProps<{
@@ -27,9 +28,10 @@ const toolNames = computed(() => {
 });
 
 const summary = computed(() => {
-  const total = props.events.length;
+  const calls = props.events.filter((event) => event.kind === 'tool_calls').length;
+  const total = calls || props.events.length;
   const suffix = toolNames.value.length ? ` · ${toolNames.value.join(', ')}` : '';
-  return `${total} ${total === 1 ? props.labels.event : props.labels.events}${suffix}`;
+  return `${props.labels.ranCommands} ${total} ${props.labels.commands}${suffix}`;
 });
 
 function groupIsOpen(kind: ToolEvent['kind']) {
@@ -74,9 +76,8 @@ function eventKey(event: ToolEvent, index: number) {
       :title="expanded ? labels.collapse : labels.expand"
       @click="expanded = !expanded"
     >
-      <span class="fold-chevron" aria-hidden="true"></span>
-      <span class="codex-fold-title">{{ labels.tools }}</span>
-      <span class="codex-fold-preview">{{ summary }}</span>
+      <Wrench class="codex-fold-icon" :size="14" aria-hidden="true" />
+      <span class="codex-fold-title">{{ summary }}</span>
     </button>
 
     <div v-if="expanded" class="tool-stack-body">

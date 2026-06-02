@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { Brain } from 'lucide-vue-next';
 
 const props = withDefaults(defineProps<{
   collapseLabel: string;
@@ -14,7 +15,6 @@ const props = withDefaults(defineProps<{
 });
 
 const expanded = ref(false);
-const shouldCollapse = computed(() => props.text.split('\n').length > 3 || props.text.length > 180);
 const preview = computed(() => {
   const plain = (props.summary || props.text).replace(/\s+/g, ' ').trim();
   return plain.length > 56 ? `${plain.slice(0, 56)}...` : plain;
@@ -22,23 +22,18 @@ const preview = computed(() => {
 </script>
 
 <template>
-  <section class="fold-card codex-fold" :class="[className, { collapsed: shouldCollapse && !expanded, expanded }]">
+  <section class="fold-card codex-fold" :class="[className, { expanded }]">
     <button
-      v-if="shouldCollapse"
       type="button"
       class="codex-fold-head"
       :title="expanded ? collapseLabel : expandLabel"
       @click="expanded = !expanded"
     >
-      <span class="fold-chevron" aria-hidden="true"></span>
+      <Brain class="codex-fold-icon" :size="14" aria-hidden="true" />
       <span class="codex-fold-title">{{ title }}</span>
-      <span class="codex-fold-preview">{{ preview }}</span>
+      <span v-if="!expanded" class="codex-fold-preview">{{ preview }}</span>
     </button>
-    <div v-else class="fold-head">
-      <span class="fold-chevron open" aria-hidden="true"></span>
-      <span>{{ title }}</span>
-    </div>
-    <div v-if="summary" class="fold-summary">{{ summary }}</div>
-    <div class="fold-content">{{ text }}</div>
+    <div v-if="expanded && summary" class="fold-summary">{{ summary }}</div>
+    <div v-if="expanded" class="fold-content">{{ text }}</div>
   </section>
 </template>

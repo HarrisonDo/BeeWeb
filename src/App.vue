@@ -2,14 +2,9 @@
 import { computed, nextTick, onMounted, ref, toRaw, watch } from 'vue';
 import {
   ArrowDownToLine,
-  Download,
-  Eraser,
-  Languages,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Sun,
   Trash2,
 } from 'lucide-vue-next';
 import ChatMessage from './components/ChatMessage.vue';
@@ -17,11 +12,12 @@ import Composer from './components/Composer.vue';
 import ConnectionPanel from './components/ConnectionPanel.vue';
 import SettingsView from './components/SettingsView.vue';
 import SessionList from './components/SessionList.vue';
+import SystemLogGroup from './components/SystemLogGroup.vue';
 import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
 import { useTheme } from './composables/useTheme';
 import { useWebSocketAgent } from './composables/useWebSocketAgent';
-import type { ClientAttachment, ClientSettingAct, ServerMessage } from './protocol/types';
+import type { ChatMessage as AgentChatMessage, ClientAttachment, ClientSettingAct, ServerMessage } from './protocol/types';
 
 interface BasicSettings {
   apiKey: string;
@@ -29,6 +25,18 @@ interface BasicSettings {
   modelName: string;
   wsUrl: string;
 }
+
+type VisibleChatItem =
+  | {
+    key: string;
+    message: AgentChatMessage;
+    type: 'message';
+  }
+  | {
+    key: string;
+    messages: AgentChatMessage[];
+    type: 'system-group';
+  };
 
 const chatContainer = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
@@ -41,7 +49,7 @@ const settingStatus = ref('');
 const availableModels = ref<string[]>([]);
 
 const { locale, setLocale, t } = useI18n();
-const { theme, toggleTheme } = useTheme();
+const { setTheme, theme } = useTheme();
 
 const sessions = useSessions();
 sessions.loadSessions();
@@ -65,9 +73,38 @@ const activeMeta = computed(() => {
   return `${agent.connected.value ? t.value.activeConnected : t.value.activeWaiting} · ${url}`;
 });
 
-const themeLabel = computed(() => (
-  theme.value === 'dark' ? t.value.themeLight : t.value.themeDark
-));
+const visibleChatItems = computed<VisibleChatItem[]>(() => {
+  const messages = sessions.activeSession.value?.messages || [];
+  const items: VisibleChatItem[] = [];
+  let pendingSystemMessages: AgentChatMessage[] = [];
+
+  function flushSystemMessages() {
+    if (!pendingSystemMessages.length) return;
+    items.push({
+      key: `system-${pendingSystemMessages[0].id}`,
+      messages: pendingSystemMessages,
+      type: 'system-group',
+    });
+    pendingSystemMessages = [];
+  }
+
+  messages.forEach((message) => {
+    if (message.role === 'system') {
+      pendingSystemMessages.push(message);
+      return;
+    }
+
+    flushSystemMessages();
+    items.push({
+      key: message.id,
+      message,
+      type: 'message',
+    });
+  });
+
+  flushSystemMessages();
+  return items;
+});
 
 function onSend(text: string, attachments: ClientAttachment[]) {
   currentView.value = 'chat';
@@ -101,11 +138,6 @@ function onScroll() {
   shouldAutoScroll.value = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
 }
 
-function clearSession() {
-  sessions.clearCurrentSession();
-  agent.clearPendingTurns();
-}
-
 function deleteSession() {
   sessions.deleteCurrentSession();
   agent.clearPendingTurns();
@@ -122,18 +154,6 @@ function createSession() {
   currentView.value = 'chat';
   sessions.createSession();
   scrollToLatestAfterRender();
-}
-
-function exportSession() {
-  const session = sessions.activeSession.value;
-  if (!session) return;
-  const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${session.title || 'agentbee-session'}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 function updateAndResendUserMessage(messageId: string, content: string) {
@@ -527,19 +547,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
             <PanelLeftOpen v-if="sidebarCollapsed" :size="17" aria-hidden="true" />
             <PanelLeftClose v-else :size="17" aria-hidden="true" />
           </button>
-          <button type="button" class="icon-button" :title="themeLabel" @click="toggleTheme">
-            <Sun v-if="theme === 'dark'" :size="17" aria-hidden="true" />
-            <Moon v-else :size="17" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="icon-button language-button"
-            :title="t.language"
-            @click="setLocale(locale === 'zh' ? 'en' : 'zh')"
-          >
-            <Languages :size="16" aria-hidden="true" />
-            <span>{{ locale === 'zh' ? 'EN' : '中' }}</span>
-          </button>
         </div>
       </div>
 
@@ -548,14 +555,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           <button type="button" class="icon-text-button" :title="t.newSession" @click="createSession">
             <Plus :size="16" aria-hidden="true" />
             <span>{{ t.newSession }}</span>
-          </button>
-          <button type="button" class="icon-text-button" :title="t.clearSession" @click="clearSession">
-            <Eraser :size="16" aria-hidden="true" />
-            <span>{{ t.clearSession }}</span>
-          </button>
-          <button type="button" class="icon-text-button" :title="t.exportSession" @click="exportSession">
-            <Download :size="16" aria-hidden="true" />
-            <span>{{ t.exportSession }}</span>
           </button>
           <button type="button" class="icon-text-button danger-action" :title="t.deleteSession" @click="deleteSession">
             <Trash2 :size="16" aria-hidden="true" />
@@ -605,14 +604,20 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         <div v-if="!sessions.activeSession.value?.messages.length" class="empty">
           {{ t.empty }}
         </div>
-        <ChatMessage
-          v-for="message in sessions.activeSession.value?.messages || []"
-          :key="message.id"
-          :labels="t"
-          :message="message"
-          @resend-user-message="resendUserMessage"
-          @update-user-message="updateAndResendUserMessage"
-        />
+        <template v-for="item in visibleChatItems" :key="item.key">
+          <SystemLogGroup
+            v-if="item.type === 'system-group'"
+            :labels="t"
+            :messages="item.messages"
+          />
+          <ChatMessage
+            v-else
+            :labels="t"
+            :message="item.message"
+            @resend-user-message="resendUserMessage"
+            @update-user-message="updateAndResendUserMessage"
+          />
+        </template>
       </section>
 
       <SettingsView
@@ -623,12 +628,16 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :config-json="configJson"
         :config-json-error="configJsonError"
         :labels="t"
+        :locale="locale"
         :setting-status="settingStatus"
+        :theme="theme"
         @get-models="requestModels"
         @close="closeSettings"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
         @save-config="saveServerConfig"
+        @set-locale="setLocale"
+        @set-theme="setTheme"
         @update:basic-setting="updateBasicSetting"
         @update:config-json="updateConfigJson"
       />

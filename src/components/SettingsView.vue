@@ -1,6 +1,26 @@
 <script setup lang="ts">
-import { Bot, ChevronDown, ChevronRight, Code2, DownloadCloud, KeyRound, Link, ListRestart, RotateCcw, Save, Server, X } from 'lucide-vue-next';
+import {
+  Bot,
+  ChevronDown,
+  ChevronRight,
+  Code2,
+  DownloadCloud,
+  KeyRound,
+  Languages,
+  Link,
+  ListRestart,
+  Moon,
+  Palette,
+  RotateCcw,
+  Save,
+  Server,
+  Sun,
+  X,
+} from 'lucide-vue-next';
 import { ref } from 'vue';
+
+type Locale = 'zh' | 'en';
+type Theme = 'light' | 'dark';
 
 interface BasicSettings {
   apiKey: string;
@@ -16,7 +36,9 @@ defineProps<{
   configJson: string;
   configJsonError: string;
   labels: Record<string, string>;
+  locale: Locale;
   settingStatus: string;
+  theme: Theme;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +47,8 @@ const emit = defineEmits<{
   getDefaultConfig: [];
   getModels: [];
   saveConfig: [];
+  setLocale: [locale: Locale];
+  setTheme: [theme: Theme];
   'update:basicSetting': [field: keyof BasicSettings, value: string];
   'update:configJson': [value: string];
 }>();
@@ -45,6 +69,64 @@ const advancedExpanded = ref(false);
       <button type="button" class="settings-close icon-button" :title="labels.closeSettings" @click="emit('close')">
         <X :size="17" aria-hidden="true" />
       </button>
+    </div>
+
+    <div class="settings-section appearance-section">
+      <div class="settings-section-title">
+        <Palette :size="17" aria-hidden="true" />
+        <div>
+          <h2>{{ labels.appearanceSettings }}</h2>
+          <p>{{ labels.appearanceSettingsHint }}</p>
+        </div>
+      </div>
+      <div class="settings-preferences">
+        <div class="settings-preference-row">
+          <span class="settings-preference-label">
+            <Sun :size="14" aria-hidden="true" />
+            {{ labels.theme }}
+          </span>
+          <div class="settings-segmented" role="group" :aria-label="labels.theme">
+            <button
+              type="button"
+              :class="{ active: theme === 'light' }"
+              @click="emit('setTheme', 'light')"
+            >
+              <Sun :size="14" aria-hidden="true" />
+              <span>{{ labels.themeLight }}</span>
+            </button>
+            <button
+              type="button"
+              :class="{ active: theme === 'dark' }"
+              @click="emit('setTheme', 'dark')"
+            >
+              <Moon :size="14" aria-hidden="true" />
+              <span>{{ labels.themeDark }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-preference-row">
+          <span class="settings-preference-label">
+            <Languages :size="14" aria-hidden="true" />
+            {{ labels.language }}
+          </span>
+          <div class="settings-segmented" role="group" :aria-label="labels.language">
+            <button
+              type="button"
+              :class="{ active: locale === 'zh' }"
+              @click="emit('setLocale', 'zh')"
+            >
+              中文
+            </button>
+            <button
+              type="button"
+              :class="{ active: locale === 'en' }"
+              @click="emit('setLocale', 'en')"
+            >
+              EN
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="settings-section">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Check, Copy, Paperclip, Pencil, RotateCcw, X } from 'lucide-vue-next';
+import { Check, Copy, Paperclip, Pencil, RotateCcw, SquareTerminal, X } from 'lucide-vue-next';
 import FoldBlock from './FoldBlock.vue';
 import ToolEventsBlock from './ToolEventsBlock.vue';
 import { useMarkdown } from '../composables/useMarkdown';
@@ -132,6 +132,12 @@ async function copyText(text: string) {
 
 <template>
   <article class="message" :class="message.role">
+    <div v-if="message.role === 'system'" class="system-log">
+      <SquareTerminal :size="14" aria-hidden="true" />
+      <span class="system-log-text">{{ message.content }}</span>
+      <span class="system-log-time">{{ message.time }}</span>
+    </div>
+    <template v-else>
     <div class="meta">{{ roleName(message.role) }} · {{ message.time }}</div>
     <div class="bubble">
       <FoldBlock
@@ -225,5 +231,6 @@ async function copyText(text: string) {
         <Pencil :size="14" aria-hidden="true" />
       </button>
     </div>
+    </template>
   </article>
 </template>
