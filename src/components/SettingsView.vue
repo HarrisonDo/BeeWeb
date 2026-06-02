@@ -9,6 +9,8 @@ import {
   Languages,
   Link,
   ListRestart,
+  LogIn,
+  LogOut,
   Moon,
   Palette,
   RotateCcw,
@@ -33,6 +35,7 @@ defineProps<{
   availableModels: string[];
   basicSettings: BasicSettings;
   connected: boolean;
+  connecting: boolean;
   configJson: string;
   configJsonError: string;
   labels: Record<string, string>;
@@ -43,6 +46,8 @@ defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  connect: [];
+  disconnect: [];
   getConfig: [];
   getDefaultConfig: [];
   getModels: [];
@@ -136,14 +141,36 @@ const advancedExpanded = ref(false);
             <Link :size="14" aria-hidden="true" />
             {{ labels.wsUrl }}
           </span>
-          <input
-            id="agentServerWsUrl"
-            :value="basicSettings.wsUrl"
-            :disabled="connected"
-            type="text"
-            placeholder="ws://127.0.0.1:8686"
-            @input="emit('update:basicSetting', 'wsUrl', ($event.target as HTMLInputElement).value)"
-          />
+          <div class="settings-input-actions">
+            <input
+              id="agentServerWsUrl"
+              :value="basicSettings.wsUrl"
+              :disabled="connected"
+              type="text"
+              placeholder="ws://127.0.0.1:8686"
+              @input="emit('update:basicSetting', 'wsUrl', ($event.target as HTMLInputElement).value)"
+            />
+            <div class="settings-input-button-group">
+              <button
+                type="button"
+                class="icon-button"
+                :title="labels.connect"
+                :disabled="connected || connecting"
+                @click="emit('connect')"
+              >
+                <LogIn :size="15" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="icon-button"
+                :title="labels.disconnect"
+                :disabled="!connected && !connecting"
+                @click="emit('disconnect')"
+              >
+                <LogOut :size="15" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </label>
         <label class="settings-field" for="customModelApiUrl">
           <span>

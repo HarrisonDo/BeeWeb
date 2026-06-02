@@ -312,7 +312,7 @@ button:disabled {
 
 .connection-compact {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
   min-height: 38px;
@@ -349,12 +349,6 @@ button:disabled {
 .field input:focus,
 .composer textarea:focus {
   border-color: var(--accent);
-}
-
-.connect-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .connect {
@@ -435,32 +429,43 @@ button:disabled {
   font-size: 0.94rem;
 }
 
-.topbar-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.topbar-actions button {
-  height: 34px;
-}
-
-.topbar-actions .icon-button {
-  min-width: 34px;
-}
-
-.topbar-actions button.attention {
-  border-color: color-mix(in srgb, var(--success) 42%, transparent);
-  background: var(--success-soft);
+.chat-shell {
+  position: relative;
+  min-height: 0;
 }
 
 .chat-area {
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
-  padding: clamp(16px, 2.4vw, 30px) clamp(18px, 4vw, 54px);
+  padding: clamp(16px, 2.4vw, 30px) clamp(18px, 4vw, 54px) 58px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.scroll-bottom-floating {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%);
+}
+
+.scroll-bottom-floating:hover {
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .settings-view {
@@ -659,6 +664,37 @@ button:disabled {
 .settings-field input:focus,
 .settings-field textarea:focus {
   border-color: var(--accent);
+}
+
+.settings-input-actions {
+  position: relative;
+  min-width: 0;
+}
+
+.settings-input-actions input {
+  padding-right: 84px;
+}
+
+.settings-input-button-group {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  display: inline-flex;
+  gap: 3px;
+  transform: translateY(-50%);
+}
+
+.settings-input-button-group .icon-button {
+  width: 32px;
+  height: 30px;
+  min-width: 32px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.settings-input-button-group .icon-button:hover {
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
 .settings-inline-control {
@@ -1367,14 +1403,6 @@ button:disabled {
     flex-direction: column;
   }
 
-  .topbar-actions {
-    width: 100%;
-  }
-
-  .topbar-actions button {
-    flex: 1;
-  }
-
   .message {
     max-width: 96%;
   }
@@ -1385,12 +1413,10 @@ button:disabled {
     flex-direction: column;
   }
 
-  .brand-controls,
-  .connect-row {
+  .brand-controls {
     width: 100%;
   }
 
-  .connect-row,
   .composer {
     grid-template-columns: 1fr;
   }

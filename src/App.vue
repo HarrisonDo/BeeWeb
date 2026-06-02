@@ -574,8 +574,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           :auto-connect-paused="agent.autoConnectPaused.value"
           :connected="agent.connected.value"
           :connecting="agent.connecting.value"
-          @connect="agent.connect"
-          @disconnect="agent.disconnect"
           @open-settings="openSettings"
         />
       </div>
@@ -587,52 +585,55 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           <strong>{{ currentView === 'settings' ? t.settings : (sessions.activeSession.value?.title || t.newConversation) }}</strong>
           <span>{{ activeMeta }}</span>
         </div>
-        <div v-if="currentView === 'chat'" class="topbar-actions">
-          <button
-            type="button"
-            class="icon-button"
-            :title="t.scrollToBottom"
-            :class="{ attention: !shouldAutoScroll }"
-            @click="scrollToBottom"
-          >
-            <ArrowDownToLine :size="17" aria-hidden="true" />
-          </button>
-        </div>
       </header>
 
-      <section v-if="currentView === 'chat'" ref="chatContainer" class="chat-area" @scroll="onScroll">
-        <div v-if="!sessions.activeSession.value?.messages.length" class="empty">
-          {{ t.empty }}
-        </div>
-        <template v-for="item in visibleChatItems" :key="item.key">
-          <SystemLogGroup
-            v-if="item.type === 'system-group'"
-            :labels="t"
-            :messages="item.messages"
-          />
-          <ChatMessage
-            v-else
-            :labels="t"
-            :message="item.message"
-            @resend-user-message="resendUserMessage"
-            @update-user-message="updateAndResendUserMessage"
-          />
-        </template>
-      </section>
+      <div v-if="currentView === 'chat'" class="chat-shell">
+        <section ref="chatContainer" class="chat-area" @scroll="onScroll">
+          <div v-if="!sessions.activeSession.value?.messages.length" class="empty">
+            {{ t.empty }}
+          </div>
+          <template v-for="item in visibleChatItems" :key="item.key">
+            <SystemLogGroup
+              v-if="item.type === 'system-group'"
+              :labels="t"
+              :messages="item.messages"
+            />
+            <ChatMessage
+              v-else
+              :labels="t"
+              :message="item.message"
+              @resend-user-message="resendUserMessage"
+              @update-user-message="updateAndResendUserMessage"
+            />
+          </template>
+        </section>
+        <button
+          v-if="!shouldAutoScroll"
+          type="button"
+          class="scroll-bottom-floating"
+          :title="t.scrollToBottom"
+          @click="scrollToBottom"
+        >
+          <ArrowDownToLine :size="18" aria-hidden="true" />
+        </button>
+      </div>
 
       <SettingsView
         v-else
         :basic-settings="basicSettings"
         :available-models="availableModels"
         :connected="agent.connected.value"
+        :connecting="agent.connecting.value"
         :config-json="configJson"
         :config-json-error="configJsonError"
         :labels="t"
         :locale="locale"
         :setting-status="settingStatus"
         :theme="theme"
+        @connect="agent.connect"
         @get-models="requestModels"
         @close="closeSettings"
+        @disconnect="agent.disconnect"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
         @save-config="saveServerConfig"

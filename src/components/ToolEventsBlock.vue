@@ -31,7 +31,8 @@ const summary = computed(() => {
   const calls = props.events.filter((event) => event.kind === 'tool_calls').length;
   const total = calls || props.events.length;
   const suffix = toolNames.value.length ? ` · ${toolNames.value.join(', ')}` : '';
-  return `${props.labels.ranCommands} ${total} ${props.labels.commands}${suffix}`;
+  const commandLabel = total === 1 ? props.labels.command : props.labels.commands;
+  return `${props.labels.ranCommands} ${total} ${commandLabel}${suffix}`;
 });
 
 function groupIsOpen(kind: ToolEvent['kind']) {

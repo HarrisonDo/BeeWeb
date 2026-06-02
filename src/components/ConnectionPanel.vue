@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogIn, LogOut, Settings } from 'lucide-vue-next';
+import { Settings } from 'lucide-vue-next';
 
 defineProps<{
   autoConnectPaused: boolean;
@@ -9,8 +9,6 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  connect: [];
-  disconnect: [];
   openSettings: [];
 }>();
 </script>
@@ -24,24 +22,6 @@ const emit = defineEmits<{
           {{ connected ? labels.connected : (connecting ? labels.connecting : (autoConnectPaused ? labels.waitingManualConnect : labels.notConnected)) }}
         </span>
       </div>
-      <button
-        type="button"
-        class="icon-button connect"
-        :title="labels.connect"
-        :disabled="connected || connecting"
-        @click="emit('connect')"
-      >
-        <LogIn :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="icon-button disconnect"
-        :title="labels.disconnect"
-        :disabled="!connected && !connecting"
-        @click="emit('disconnect')"
-      >
-        <LogOut :size="16" aria-hidden="true" />
-      </button>
       <button type="button" class="icon-button" :title="labels.settings" @click="emit('openSettings')">
         <Settings :size="16" aria-hidden="true" />
       </button>
