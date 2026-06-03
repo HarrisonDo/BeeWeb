@@ -637,7 +637,9 @@ button:disabled {
 
 .settings-field {
   display: grid;
-  gap: 7px;
+  grid-template-rows: auto auto minmax(0, auto);
+  align-content: start;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -650,12 +652,14 @@ button:disabled {
 }
 
 .settings-field-hint {
+  display: block;
   color: var(--faint);
   line-height: 1.5;
   font-size: 0.72rem;
 }
 
 .settings-field input,
+.settings-field select,
 .settings-field textarea {
   width: 100%;
   min-width: 0;
@@ -668,8 +672,14 @@ button:disabled {
 }
 
 .settings-field input:focus,
+.settings-field select:focus,
 .settings-field textarea:focus {
   border-color: var(--accent);
+}
+
+.settings-field select {
+  height: 40px;
+  appearance: auto;
 }
 
 .settings-input-actions {

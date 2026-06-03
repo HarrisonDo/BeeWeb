@@ -206,21 +206,28 @@ const advancedExpanded = ref(false);
             {{ labels.modelName }}
           </span>
           <div class="settings-inline-control">
-            <input
+            <select
               id="customModelName"
               :value="basicSettings.modelName"
-              :list="availableModels.length ? 'availableModels' : undefined"
-              type="text"
-              placeholder="model-name"
-              @input="emit('update:basicSetting', 'modelName', ($event.target as HTMLInputElement).value)"
-            />
+              @change="emit('update:basicSetting', 'modelName', ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-if="!availableModels.length" :value="basicSettings.modelName">
+                {{ basicSettings.modelName || labels.noModelsAvailable }}
+              </option>
+              <option
+                v-else-if="basicSettings.modelName && !availableModels.includes(basicSettings.modelName)"
+                :value="basicSettings.modelName"
+              >
+                {{ basicSettings.modelName }}
+              </option>
+              <option v-for="model in availableModels" :key="model" :value="model">
+                {{ model }}
+              </option>
+            </select>
             <button type="button" class="icon-button" :title="labels.getModels" @click="emit('getModels')">
               <ListRestart :size="15" aria-hidden="true" />
             </button>
           </div>
-          <datalist v-if="availableModels.length" id="availableModels">
-            <option v-for="model in availableModels" :key="model" :value="model" />
-          </datalist>
         </label>
       </div>
       <div class="settings-actions">
