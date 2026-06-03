@@ -649,6 +649,12 @@ button:disabled {
   font-size: 0.76rem;
 }
 
+.settings-field-hint {
+  color: var(--faint);
+  line-height: 1.5;
+  font-size: 0.72rem;
+}
+
 .settings-field input,
 .settings-field textarea {
   width: 100%;
@@ -1331,12 +1337,24 @@ button:disabled {
   background: var(--success);
 }
 
+.send:hover {
+  border-color: color-mix(in srgb, var(--success) 66%, #ffffff 18%);
+  color: #ffffff;
+  background: color-mix(in srgb, var(--success) 86%, #000000 14%);
+}
+
 .stop-send {
   align-self: stretch;
   width: 44px;
   height: auto;
   color: #ffffff;
   background: var(--danger);
+}
+
+.stop-send:hover {
+  border-color: color-mix(in srgb, var(--danger) 66%, #ffffff 18%);
+  color: #ffffff;
+  background: color-mix(in srgb, var(--danger) 88%, #000000 12%);
 }
 
 @media (max-width: 1080px) {

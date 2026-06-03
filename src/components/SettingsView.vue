@@ -198,6 +198,7 @@ const advancedExpanded = ref(false);
             placeholder="sk-..."
             @input="emit('update:basicSetting', 'apiKey', ($event.target as HTMLInputElement).value)"
           />
+          <small class="settings-field-hint">{{ labels.apiKeyEncryptedHint }}</small>
         </label>
         <label class="settings-field" for="customModelName">
           <span>
