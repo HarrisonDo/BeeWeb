@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
+import { MemoryStick, Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import type { ClientAttachment } from '../protocol/types';
 
@@ -299,6 +299,10 @@ function submit() {
   nextTick(resize);
 }
 
+function saveMemory() {
+  emit('send', props.labels.saveMemoryMessage, []);
+}
+
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
   const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
@@ -469,6 +473,8 @@ function makeAttachmentId() {
     <button
       type="button"
       class="attach-button icon-button"
+      :aria-label="labels.attachFiles"
+      :data-tooltip="labels.attachFiles"
       :title="labels.attachFiles"
       :disabled="disabled"
       @click="openFilePicker"
@@ -478,6 +484,8 @@ function makeAttachmentId() {
     <button
       type="button"
       class="stop-send icon-button"
+      :aria-label="labels.stopGeneration"
+      :data-tooltip="labels.stopGeneration"
       :title="labels.stopGeneration"
       @click="emit('stop')"
     >
@@ -485,12 +493,23 @@ function makeAttachmentId() {
     </button>
     <button
       type="button"
-      class="send icon-text-button"
+      class="memory-send icon-button"
+      :aria-label="labels.saveMemory"
+      :data-tooltip="labels.saveMemory"
+      :title="labels.saveMemory"
+      @click="saveMemory"
+    >
+      <MemoryStick :size="17" aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      class="send icon-button"
+      :aria-label="labels.send"
+      :data-tooltip="labels.send"
       :title="labels.send"
       @click="submit"
     >
       <SendHorizontal :size="17" aria-hidden="true" />
-      <span>{{ labels.send }}</span>
     </button>
   </footer>
 </template>

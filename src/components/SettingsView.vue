@@ -17,7 +17,6 @@ import {
   Save,
   Server,
   Sun,
-  X,
 } from 'lucide-vue-next';
 import { ref } from 'vue';
 
@@ -45,7 +44,6 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  close: [];
   connect: [];
   disconnect: [];
   getConfig: [];
@@ -63,19 +61,6 @@ const advancedExpanded = ref(false);
 
 <template>
   <section class="settings-view">
-    <div class="settings-header">
-      <div class="settings-section-title">
-        <Link :size="17" aria-hidden="true" />
-        <div>
-          <h2>{{ labels.settings }}</h2>
-          <p>{{ labels.defaultSettingsHint }}</p>
-        </div>
-      </div>
-      <button type="button" class="settings-close icon-button" :title="labels.closeSettings" @click="emit('close')">
-        <X :size="17" aria-hidden="true" />
-      </button>
-    </div>
-
     <div class="settings-section appearance-section">
       <div class="settings-section-title">
         <Palette :size="17" aria-hidden="true" />
@@ -231,14 +216,6 @@ const advancedExpanded = ref(false);
         </label>
       </div>
       <div class="settings-actions">
-        <button type="button" class="icon-text-button" @click="emit('getConfig')">
-          <DownloadCloud :size="15" aria-hidden="true" />
-          <span>{{ labels.getConfig }}</span>
-        </button>
-        <button type="button" class="icon-text-button" @click="emit('getDefaultConfig')">
-          <RotateCcw :size="15" aria-hidden="true" />
-          <span>{{ labels.getDefaultConfig }}</span>
-        </button>
         <button type="button" class="icon-text-button primary-action" @click="emit('saveConfig')">
           <Save :size="15" aria-hidden="true" />
           <span>{{ labels.saveConfig }}</span>
@@ -263,16 +240,26 @@ const advancedExpanded = ref(false);
         </span>
       </button>
       <div v-show="advancedExpanded" class="settings-collapse-body">
-      <label class="settings-field" for="advancedConfigJson">
-        <span>{{ labels.fullConfigJson }}</span>
-        <textarea
-          id="advancedConfigJson"
-          class="settings-json"
-          spellcheck="false"
-          :value="configJson"
-          @input="emit('update:configJson', ($event.target as HTMLTextAreaElement).value)"
-        ></textarea>
-      </label>
+        <div class="settings-actions">
+          <button type="button" class="icon-text-button" @click="emit('getConfig')">
+            <DownloadCloud :size="15" aria-hidden="true" />
+            <span>{{ labels.getConfig }}</span>
+          </button>
+          <button type="button" class="icon-text-button" @click="emit('getDefaultConfig')">
+            <RotateCcw :size="15" aria-hidden="true" />
+            <span>{{ labels.getDefaultConfig }}</span>
+          </button>
+        </div>
+        <label class="settings-field" for="advancedConfigJson">
+          <span>{{ labels.fullConfigJson }}</span>
+          <textarea
+            id="advancedConfigJson"
+            class="settings-json"
+            spellcheck="false"
+            :value="configJson"
+            @input="emit('update:configJson', ($event.target as HTMLTextAreaElement).value)"
+          ></textarea>
+        </label>
       </div>
     </div>
   </section>

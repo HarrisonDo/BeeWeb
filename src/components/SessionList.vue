@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageSquare } from 'lucide-vue-next';
+import { MessageSquare, Trash2 } from 'lucide-vue-next';
 import type { ChatSession } from '../protocol/types';
 
 defineProps<{
@@ -9,6 +9,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  deleteSession: [sessionId: string];
   select: [sessionId: string];
 }>();
 
@@ -26,20 +27,32 @@ function formatDate(value: string) {
 
 <template>
   <div class="sessions">
-    <button
+    <div
       v-for="session in sessions"
       :key="session.id"
-      type="button"
       class="session-item"
       :class="{ active: session.id === activeSessionId }"
-      :title="session.title"
-      @click="emit('select', session.id)"
     >
-      <span class="session-title">
-        <MessageSquare :size="14" aria-hidden="true" />
-        <span>{{ session.title }}</span>
-      </span>
-      <span class="session-meta">{{ session.messages.length }} {{ labels.items }} · {{ formatDate(session.updatedAt) }}</span>
-    </button>
+      <button
+        type="button"
+        class="session-select"
+        :title="session.title"
+        @click="emit('select', session.id)"
+      >
+        <span class="session-title">
+          <MessageSquare :size="14" aria-hidden="true" />
+          <span>{{ session.title }}</span>
+        </span>
+        <span class="session-meta">{{ session.messages.length }} {{ labels.items }} · {{ formatDate(session.updatedAt) }}</span>
+      </button>
+      <button
+        type="button"
+        class="session-delete icon-button"
+        :title="labels.deleteSession"
+        @click.stop="emit('deleteSession', session.id)"
+      >
+        <Trash2 :size="14" aria-hidden="true" />
+      </button>
+    </div>
   </div>
 </template>

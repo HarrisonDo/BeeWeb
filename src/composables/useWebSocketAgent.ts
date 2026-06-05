@@ -19,8 +19,9 @@ import {
 import { makeId, nowTime } from './useSessions';
 
 const NO_RESPONSE_TIMEOUT_MS = 5 * 60_000;
-const AUTO_CONNECT_MAX_ATTEMPTS = 3;
-const AUTO_CONNECT_RETRY_MS = 1500;
+const AUTO_CONNECT_WINDOW_MS = 60_000;
+const AUTO_CONNECT_BASE_RETRY_MS = 1000;
+const AUTO_CONNECT_MAX_RETRY_MS = 15_000;
 
 interface UseWebSocketAgentOptions {
   activeSession: () => ChatSession | null;
@@ -44,6 +45,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   let manualDisconnect = false;
   let currentConnectIsAuto = false;
   let autoConnectAttempts = 0;
+  let autoConnectStartedAt = 0;
 
   const canSend = computed(() => connected.value && socket.value?.readyState === WebSocket.OPEN);
   const hasPendingTurns = computed(() => pendingTurns.value.size > 0);
@@ -60,7 +62,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     const url = wsUrl.value.trim();
     if (!/^wss?:\/\//.test(url)) {
       options.addMessage('error', 'WebSocket URL must start with ws:// or wss://.');
-      if (automatic) autoConnectPaused.value = true;
+      if (automatic) pauseAutoConnect('Auto connection stopped because the WebSocket URL is invalid. Waiting for manual connection.');
       return;
     }
 
@@ -71,6 +73,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     if (!automatic) {
       autoConnectPaused.value = false;
       autoConnectAttempts = 0;
+      autoConnectStartedAt = 0;
     }
     options.addMessage('system', `Connecting to ${url}`);
     socket.value = new WebSocket(url);
@@ -80,6 +83,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       connecting.value = false;
       autoConnectPaused.value = false;
       autoConnectAttempts = 0;
+      autoConnectStartedAt = 0;
       localStorage.setItem('agentbee.lastUrl', url);
       options.addMessage('system', 'WebSocket connected.');
     };
@@ -124,6 +128,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
 
   function startAutoConnect() {
     if (autoConnectPaused.value || connected.value || connecting.value) return;
+    autoConnectStartedAt = Date.now();
     autoConnectAttempts = 0;
     scheduleAutoReconnect(0);
   }
@@ -419,25 +424,46 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     noResponseTimers.clear();
   }
 
-  function scheduleAutoReconnect(delay = AUTO_CONNECT_RETRY_MS) {
+  function scheduleAutoReconnect(delay = getAutoReconnectDelay()) {
     clearAutoRetryTimer();
     if (manualDisconnect || autoConnectPaused.value) return;
-    if (autoConnectAttempts >= AUTO_CONNECT_MAX_ATTEMPTS) {
-      autoConnectPaused.value = true;
-      options.addMessage('system', 'Auto connection stopped after repeated failures. Waiting for manual connection.');
+
+    const now = Date.now();
+    if (!autoConnectStartedAt) autoConnectStartedAt = now;
+    const remainingMs = AUTO_CONNECT_WINDOW_MS - (now - autoConnectStartedAt);
+    if (remainingMs <= 0) {
+      pauseAutoConnect('Auto connection stopped after 1 minute of retries. Waiting for manual connection.');
       return;
     }
+
+    const nextDelay = Math.max(0, Math.min(delay, remainingMs));
     autoRetryTimer = window.setTimeout(() => {
       autoRetryTimer = null;
+      if (Date.now() - autoConnectStartedAt > AUTO_CONNECT_WINDOW_MS) {
+        pauseAutoConnect('Auto connection stopped after 1 minute of retries. Waiting for manual connection.');
+        return;
+      }
       autoConnectAttempts += 1;
       connect(true);
-    }, delay);
+    }, nextDelay);
   }
 
   function clearAutoRetryTimer() {
     if (autoRetryTimer === null) return;
     window.clearTimeout(autoRetryTimer);
     autoRetryTimer = null;
+  }
+
+  function getAutoReconnectDelay() {
+    const exponent = Math.max(0, autoConnectAttempts - 1);
+    return Math.min(AUTO_CONNECT_BASE_RETRY_MS * 2 ** exponent, AUTO_CONNECT_MAX_RETRY_MS);
+  }
+
+  function pauseAutoConnect(message: string) {
+    autoConnectPaused.value = true;
+    autoConnectStartedAt = 0;
+    clearAutoRetryTimer();
+    options.addMessage('system', message);
   }
 
   function getLatestPendingMessageId(): string | null {

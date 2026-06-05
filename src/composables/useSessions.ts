@@ -126,11 +126,16 @@ export function useSessions() {
   }
 
   function deleteCurrentSession() {
+    if (!activeSessionId.value) return;
+    deleteSession(activeSessionId.value);
+  }
+
+  function deleteSession(sessionId: string) {
     if (!sessions.value.length) return;
-    sessions.value = sessions.value.filter((session) => session.id !== activeSessionId.value);
+    sessions.value = sessions.value.filter((session) => session.id !== sessionId);
     if (!sessions.value.length) {
       createSession(false);
-    } else {
+    } else if (activeSessionId.value === sessionId) {
       activeSessionId.value = sessions.value[0].id;
     }
     saveSessions();
@@ -144,6 +149,7 @@ export function useSessions() {
     clearCurrentSession,
     createSession,
     deleteCurrentSession,
+    deleteSession,
     loadSessions,
     saveSessions,
     setActiveSession,

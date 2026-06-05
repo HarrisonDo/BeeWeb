@@ -5,7 +5,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Trash2,
+  X,
 } from 'lucide-vue-next';
 import ChatMessage from './components/ChatMessage.vue';
 import Composer from './components/Composer.vue';
@@ -64,8 +64,14 @@ const agent = useWebSocketAgent({
   updateTitleFromMessage: sessions.updateTitleFromMessage,
 });
 syncWsUrlFromConfig(agentConfig.value);
+let modelsRequestedForConnection = false;
 watch(() => agent.canSend.value, (canSend) => {
-  if (canSend) requestServerConfigIfNeeded();
+  if (canSend) {
+    requestServerConfigIfNeeded();
+    requestModelsForConnection();
+    return;
+  }
+  modelsRequestedForConnection = false;
 });
 
 const activeMeta = computed(() => {
@@ -138,9 +144,13 @@ function onScroll() {
   shouldAutoScroll.value = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
 }
 
-function deleteSession() {
-  sessions.deleteCurrentSession();
-  agent.clearPendingTurns();
+function deleteSession(sessionId: string) {
+  const deletedActiveSession = sessionId === sessions.activeSessionId.value;
+  sessions.deleteSession(sessionId);
+  if (deletedActiveSession) {
+    agent.clearPendingTurns();
+    scrollToLatestAfterRender();
+  }
 }
 
 function selectSession(sessionId: string) {
@@ -253,10 +263,18 @@ function saveServerConfig() {
   sendSettingRequest('saveConfig', parsed);
 }
 
-function requestModels() {
+function requestModels(silent = false) {
+  if (silent && !agent.canSend.value) return;
   const sent = agent.sendSystemAct('getModels');
   if (!sent) return;
-  settingStatus.value = `${t.value.systemRequestSent}: getModels`;
+  if (!silent) settingStatus.value = `${t.value.systemRequestSent}: getModels`;
+}
+
+function requestModelsForConnection() {
+  if (modelsRequestedForConnection) return;
+  const sent = agent.sendSystemAct('getModels');
+  if (!sent) return;
+  modelsRequestedForConnection = true;
 }
 
 function sendSettingRequest(act: ClientSettingAct, content?: unknown) {
@@ -273,6 +291,7 @@ function handleSettingMessage(act: string, content: unknown, msg: ServerMessage)
     settingStatus.value = act === 'getDefaultConfig'
       ? t.value.defaultConfigLoaded
       : t.value.serverConfigLoaded;
+    if (act === 'getConfig' || !act) requestModelsForConnection();
     return;
   }
 
@@ -327,44 +346,29 @@ function parseModels(value: unknown): string[] {
   const models = new Set<string>();
   const seen = new WeakSet<object>();
 
-  function visit(node: unknown, key = '', depth = 0) {
+  function visit(node: unknown, depth = 0) {
     if (depth > 6 || node == null) return;
+    if (typeof node === 'string') {
+      models.add(node);
+      return;
+    }
     if (typeof node === 'object') {
       if (seen.has(node as object)) return;
       seen.add(node as object);
     }
-    if (typeof node === 'string') {
-      if (!key || isModelKey(key) || looksLikeModelName(node)) models.add(node);
-      return;
-    }
     if (typeof node !== 'object') return;
     if (Array.isArray(node)) {
-      node.forEach((item) => visit(item, key, depth + 1));
+      node.forEach((item) => visit(item, depth + 1));
       return;
     }
     Object.entries(node).forEach(([entryKey, entryValue]) => {
-      if (typeof entryValue === 'string' && isModelKey(entryKey)) {
-        models.add(entryValue);
-      }
-      if (Array.isArray(entryValue) || isRecord(entryValue)) {
-        visit(entryValue, entryKey, depth + 1);
-      } else if (typeof entryValue === 'string' && !isModelKey(entryKey)) {
-        if (looksLikeModelName(entryValue)) models.add(entryValue);
-      }
+      if (entryKey === 'id' && typeof entryValue === 'string') models.add(entryValue);
+      if (Array.isArray(entryValue) || isRecord(entryValue)) visit(entryValue, depth + 1);
     });
   }
 
   visit(value);
   return Array.from(models);
-}
-
-function isModelKey(key: string) {
-  const normalized = key.toLowerCase();
-  return ['id', 'name', 'model', 'model_name', 'modelname', 'value', 'label', 'title'].includes(normalized);
-}
-
-function looksLikeModelName(value: string) {
-  return /^[\w.-]{2,}$/.test(value) && /[a-z0-9]/i.test(value);
 }
 
 function syncWsUrlFromConfig(config: Record<string, unknown>) {
@@ -556,16 +560,13 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
             <Plus :size="16" aria-hidden="true" />
             <span>{{ t.newSession }}</span>
           </button>
-          <button type="button" class="icon-text-button danger-action" :title="t.deleteSession" @click="deleteSession">
-            <Trash2 :size="16" aria-hidden="true" />
-            <span>{{ t.deleteSession }}</span>
-          </button>
         </div>
 
         <SessionList
           :labels="t"
           :sessions="sessions.sessions.value"
           :active-session-id="sessions.activeSessionId.value"
+          @delete-session="deleteSession"
           @select="selectSession"
         />
 
@@ -585,6 +586,15 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           <strong>{{ currentView === 'settings' ? t.settings : (sessions.activeSession.value?.title || t.newConversation) }}</strong>
           <span>{{ activeMeta }}</span>
         </div>
+        <button
+          v-if="currentView === 'settings'"
+          type="button"
+          class="topbar-close icon-button"
+          :title="t.closeSettings"
+          @click="closeSettings"
+        >
+          <X :size="17" aria-hidden="true" />
+        </button>
       </header>
 
       <div v-if="currentView === 'chat'" class="chat-shell">
@@ -632,7 +642,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :theme="theme"
         @connect="agent.connect"
         @get-models="requestModels"
-        @close="closeSettings"
         @disconnect="agent.disconnect"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
