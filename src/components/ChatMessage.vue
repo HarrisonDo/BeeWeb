@@ -40,6 +40,8 @@ const endedWithoutResponse = computed(() => (
   !hasAssistantOutput.value
 ));
 
+const renderedMarkdown = computed(() => renderMarkdownBlocks(props.message.content || ''));
+
 function roleName(role: ChatMessage['role']) {
   return {
     user: props.labels.roleUser,
@@ -55,6 +57,29 @@ async function copyMessage() {
   copied.value = true;
   window.setTimeout(() => {
     copied.value = false;
+  }, 1200);
+}
+
+async function copyMarkdownBlock(event: MouseEvent) {
+  const target = event.target instanceof Element ? event.target : null;
+  const button = target?.closest<HTMLButtonElement>('.markdown-code-copy');
+  if (!button) return;
+
+  const block = button.closest<HTMLElement>('.markdown-code-block');
+  const code = block?.querySelector<HTMLElement>('pre code') || block?.querySelector<HTMLElement>('pre');
+  const text = code?.textContent || '';
+  if (!text.trim()) return;
+
+  await copyText(text);
+  const copyLabel = button.dataset.copyLabel || props.labels.copyMessage;
+  const copiedLabel = button.dataset.copiedLabel || props.labels.copied;
+  button.title = copiedLabel;
+  button.setAttribute('aria-label', copiedLabel);
+  button.classList.add('copied');
+  window.setTimeout(() => {
+    button.title = copyLabel;
+    button.setAttribute('aria-label', copyLabel);
+    button.classList.remove('copied');
   }, 1200);
 }
 
@@ -128,6 +153,35 @@ async function copyText(text: string) {
   document.execCommand('copy');
   document.body.removeChild(textarea);
 }
+
+function renderMarkdownBlocks(markdown: string) {
+  const html = renderMarkdown(markdown);
+  if (!html.includes('<pre')) return html;
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.querySelectorAll('pre').forEach((pre) => {
+    if (pre.parentElement?.classList.contains('markdown-code-block')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'markdown-code-block';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'markdown-code-copy';
+    button.title = props.labels.copyMessage;
+    button.setAttribute('aria-label', props.labels.copyMessage);
+    button.dataset.copyLabel = props.labels.copyMessage;
+    button.dataset.copiedLabel = props.labels.copied;
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+
+    pre.replaceWith(wrapper);
+    wrapper.appendChild(button);
+    wrapper.appendChild(pre);
+  });
+
+  return container.innerHTML;
+}
 </script>
 
 <template>
@@ -179,7 +233,8 @@ async function copyText(text: string) {
       <div
         v-else-if="message.role === 'assistant'"
         class="markdown-body"
-        v-html="renderMarkdown(message.content || '')"
+        @click="copyMarkdownBlock"
+        v-html="renderedMarkdown"
       ></div>
       <div v-else-if="isEditing" class="user-edit-form">
         <textarea

@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Code2,
   DownloadCloud,
+  FolderOpen,
   KeyRound,
   Languages,
   Link,
@@ -16,6 +17,7 @@ import {
   RotateCcw,
   Save,
   Server,
+  ShieldCheck,
   Sun,
 } from 'lucide-vue-next';
 import { ref } from 'vue';
@@ -26,7 +28,9 @@ type Theme = 'light' | 'dark';
 interface BasicSettings {
   apiKey: string;
   apiUrl: string;
+  inSandbox: boolean;
   modelName: string;
+  workspacePath: string;
   wsUrl: string;
 }
 
@@ -52,7 +56,7 @@ const emit = defineEmits<{
   saveConfig: [];
   setLocale: [locale: Locale];
   setTheme: [theme: Theme];
-  'update:basicSetting': [field: keyof BasicSettings, value: string];
+  'update:basicSetting': [field: keyof BasicSettings, value: boolean | string];
   'update:configJson': [value: string];
 }>();
 
@@ -213,6 +217,38 @@ const advancedExpanded = ref(false);
               <ListRestart :size="15" aria-hidden="true" />
             </button>
           </div>
+        </label>
+        <label class="settings-field" for="agentWorkspacePath">
+          <span>
+            <FolderOpen :size="14" aria-hidden="true" />
+            {{ labels.workspaceConfig }}
+          </span>
+          <input
+            id="agentWorkspacePath"
+            :value="basicSettings.workspacePath"
+            type="text"
+            placeholder="D:\\Projects\\AgentBee"
+            @input="emit('update:basicSetting', 'workspacePath', ($event.target as HTMLInputElement).value)"
+          />
+        </label>
+        <label class="settings-field settings-switch-field" for="agentSandboxMode">
+          <span>
+            <ShieldCheck :size="14" aria-hidden="true" />
+            {{ labels.sandboxMode }}
+          </span>
+          <span class="settings-switch-row">
+            <span class="settings-switch-copy">{{ labels.sandboxModeHint }}</span>
+            <input
+              id="agentSandboxMode"
+              class="settings-switch-input"
+              type="checkbox"
+              :checked="basicSettings.inSandbox"
+              @change="emit('update:basicSetting', 'inSandbox', ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="settings-switch" aria-hidden="true">
+              <span></span>
+            </span>
+          </span>
         </label>
       </div>
       <div class="settings-actions">

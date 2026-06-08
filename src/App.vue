@@ -22,7 +22,9 @@ import type { ChatMessage as AgentChatMessage, ClientAttachment, ClientSettingAc
 interface BasicSettings {
   apiKey: string;
   apiUrl: string;
+  inSandbox: boolean;
   modelName: string;
+  workspacePath: string;
   wsUrl: string;
 }
 
@@ -179,7 +181,10 @@ function resendUserMessage(messageId: string) {
     item.role === 'user'
   ));
   if (!message || (!message.content.trim() && !message.attachments?.length)) return;
-  agent.resendEditedText(messageId, message.content);
+  const attachments: ClientAttachment[] = (message.attachments || []).map((attachment) => ({
+    ...attachment,
+  }));
+  agent.sendText(message.content, attachments);
   maybeScrollAfterUpdate();
 }
 
@@ -211,18 +216,22 @@ function updateWsUrl(value: string) {
 const basicSettings = computed<BasicSettings>(() => ({
   apiKey: readString(agentConfig.value, ['agent_llm', 'api_key']),
   apiUrl: readString(agentConfig.value, ['agent_llm', 'api_url']),
+  inSandbox: readBoolean(agentConfig.value, ['agent_tools', 'in_sandbox'], true),
   modelName: readString(agentConfig.value, ['agent_llm', 'model']),
+  workspacePath: readString(agentConfig.value, ['agent_tools', 'workspace_path']),
   wsUrl: getWsUrlFromConfig(agentConfig.value),
 }));
 
-function updateBasicSetting(field: keyof BasicSettings, value: string) {
+function updateBasicSetting(field: keyof BasicSettings, value: boolean | string) {
   const nextConfig = cloneConfig(agentConfig.value);
   if (field === 'wsUrl') {
-    updateAgentServerFromWsUrl(nextConfig, value);
+    updateAgentServerFromWsUrl(nextConfig, String(value));
   }
-  if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], value);
-  if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], value);
-  if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], value);
+  if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], String(value));
+  if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], String(value));
+  if (field === 'inSandbox') setNestedValue(nextConfig, ['agent_tools', 'in_sandbox'], Boolean(value));
+  if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], String(value));
+  if (field === 'workspacePath') setNestedValue(nextConfig, ['agent_tools', 'workspace_path'], String(value));
   applyAgentConfig(nextConfig, { syncJson: true, syncWs: true });
   configJsonError.value = '';
 }
@@ -514,6 +523,17 @@ function readPort(source: Record<string, unknown>, path: string[], fallback: str
   const value = readNestedValue(source, path);
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   if (typeof value === 'string') return value.trim();
+  return fallback;
+}
+
+function readBoolean(source: Record<string, unknown>, path: string[], fallback: boolean): boolean {
+  const value = readNestedValue(source, path);
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
   return fallback;
 }
 

@@ -453,6 +453,16 @@ function makeAttachmentId() {
         </button>
       </span>
     </div>
+    <button
+      type="button"
+      class="memory-send icon-button"
+      :aria-label="labels.saveMemory"
+      :data-tooltip="labels.saveMemory"
+      :title="labels.saveMemory"
+      @click="saveMemory"
+    >
+      <MemoryStick :size="17" aria-hidden="true" />
+    </button>
     <textarea
       ref="textarea"
       v-model="text"
@@ -490,16 +500,6 @@ function makeAttachmentId() {
       @click="emit('stop')"
     >
       <Square :size="16" aria-hidden="true" />
-    </button>
-    <button
-      type="button"
-      class="memory-send icon-button"
-      :aria-label="labels.saveMemory"
-      :data-tooltip="labels.saveMemory"
-      :title="labels.saveMemory"
-      @click="saveMemory"
-    >
-      <MemoryStick :size="17" aria-hidden="true" />
     </button>
     <button
       type="button"
