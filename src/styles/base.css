@@ -1501,27 +1501,29 @@ button:disabled {
   height: 44px;
   min-width: 0;
   color: #ffffff;
-  background: var(--success);
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  background: var(--accent-strong);
 }
 
 .send:hover {
-  border-color: color-mix(in srgb, var(--success) 66%, #ffffff 18%);
+  border-color: color-mix(in srgb, var(--accent) 64%, #ffffff 16%);
   color: #ffffff;
-  background: color-mix(in srgb, var(--success) 86%, #000000 14%);
+  background: color-mix(in srgb, var(--accent-strong) 88%, var(--text) 12%);
 }
 
 .stop-send {
   align-self: end;
   width: 44px;
   height: 44px;
-  color: #ffffff;
-  background: var(--danger);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 26%, transparent);
+  background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface) 28%);
 }
 
 .stop-send:hover {
-  border-color: color-mix(in srgb, var(--danger) 66%, #ffffff 18%);
-  color: #ffffff;
-  background: color-mix(in srgb, var(--danger) 88%, #000000 12%);
+  border-color: color-mix(in srgb, var(--danger) 44%, transparent);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger-soft) 86%, var(--surface-raised) 14%);
 }
 
 .memory-send {

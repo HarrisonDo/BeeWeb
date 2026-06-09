@@ -216,9 +216,9 @@ function updateWsUrl(value: string) {
 const basicSettings = computed<BasicSettings>(() => ({
   apiKey: readString(agentConfig.value, ['agent_llm', 'api_key']),
   apiUrl: readString(agentConfig.value, ['agent_llm', 'api_url']),
-  inSandbox: readBoolean(agentConfig.value, ['agent_tools', 'in_sandbox'], true),
+  inSandbox: readBoolean(agentConfig.value, ['sandbox_mode'], true),
   modelName: readString(agentConfig.value, ['agent_llm', 'model']),
-  workspacePath: readString(agentConfig.value, ['agent_tools', 'workspace_path']),
+  workspacePath: readString(agentConfig.value, ['workspace_path']),
   wsUrl: getWsUrlFromConfig(agentConfig.value),
 }));
 
@@ -229,9 +229,9 @@ function updateBasicSetting(field: keyof BasicSettings, value: boolean | string)
   }
   if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], String(value));
   if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], String(value));
-  if (field === 'inSandbox') setNestedValue(nextConfig, ['agent_tools', 'in_sandbox'], Boolean(value));
+  if (field === 'inSandbox') setNestedValue(nextConfig, ['sandbox_mode'], Boolean(value));
   if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], String(value));
-  if (field === 'workspacePath') setNestedValue(nextConfig, ['agent_tools', 'workspace_path'], String(value));
+  if (field === 'workspacePath') setNestedValue(nextConfig, ['workspace_path'], String(value));
   applyAgentConfig(nextConfig, { syncJson: true, syncWs: true });
   configJsonError.value = '';
 }
@@ -268,8 +268,9 @@ function requestDefaultServerConfig() {
 function saveServerConfig() {
   const parsed = parseConfigJson(configJson.value);
   if (!parsed) return;
-  applyAgentConfig(parsed, { syncJson: false, syncWs: true });
-  sendSettingRequest('saveConfig', parsed);
+  const normalized = normalizeAgentConfig(parsed);
+  applyAgentConfig(normalized, { syncJson: true, syncWs: true });
+  sendSettingRequest('saveConfig', normalized);
 }
 
 function requestModels(silent = false) {
@@ -412,7 +413,7 @@ function readAgentConfig(): Record<string, unknown> {
   const defaults = createDefaultAgentConfig();
   try {
     const saved = JSON.parse(localStorage.getItem('agentbee.agentConfig') || 'null');
-    if (isRecord(saved)) return mergeAgentConfig(defaults, saved);
+    if (isRecord(saved)) return normalizeAgentConfig(mergeAgentConfig(defaults, normalizeAgentConfig(saved)));
   } catch {
   }
   return defaults;
@@ -424,7 +425,7 @@ function applyAgentConfig(
 ) {
   const syncJson = options.syncJson ?? true;
   const syncWs = options.syncWs ?? true;
-  agentConfig.value = cloneConfig(nextConfig);
+  agentConfig.value = normalizeAgentConfig(cloneConfig(nextConfig));
   localStorage.setItem('agentbee.agentConfig', stringifyConfig(agentConfig.value));
   if (syncWs) syncWsUrlFromConfig(agentConfig.value);
   if (syncJson) refreshConfigJson();
@@ -450,27 +451,34 @@ function createDefaultAgentConfig(): Record<string, unknown> {
       ping_interval: 60,
     },
     agent_llm: {
-      provider: 'agent_openai',
-      work_name: 'procWorker',
       api_url: 'http://127.0.0.1:1234/v1',
-      api_key: 'sk-lm-J78sqMgX:IUMBn3qsotGyfViPMaRS',
-      model: 'qwen3.6-35b-a3b-mtp-apex',
+      api_key: 'sk-lm-:',
+      model: 'qwen3.6-35b-a3b-apex',
       org_id: '',
+      hw_hash: '',
+      provider: 'modules/agent_openai',
+      worker_name: 'procWorker',
       timeout: 7200,
-      keep_reasons: false,
+      keep_reasons: true,
       params: {
-        max_tokens: 32768,
+        max_tokens: 65536,
         temperature: 0.8,
-        min_p: 0.05,
-        top_p: 0.9,
+        min_p: 0,
+        top_p: 0.95,
+        top_k: 40,
         frequency_penalty: 0,
-        presence_penalty: 0.5,
-        stop: [],
+        presence_penalty: 1.0,
+        repetition_penalty: 1.0,
+        enable_thinking: false,
+        stop: [
+          '<|im_end|>',
+          '<|endoftext|>',
+        ],
+        chat_template_kwargs: {
+          enable_thinking: false,
+        },
         extra_body: {
-          thinking: false,
-          chat_template_kwargs: {
-            enable_thinking: false,
-          },
+          enable_thinking: false,
         },
         thinking: {
           type: 'disabled',
@@ -478,25 +486,47 @@ function createDefaultAgentConfig(): Record<string, unknown> {
       },
     },
     agent_task: {
-      provider: 'agent_mem_db',
+      provider: 'tools/Memory',
     },
     agent_memory: {
-      provider: 'agent_mem_db',
-      max_history: 30,
+      provider: 'tools/Memory',
+      max_history: 50,
     },
-    agent_tools: {
-      enabled: true,
-      in_sandbox: true,
-      workspace_path: '',
-      list: [
-        { name: 'agent_mem_db' },
-        { name: 'agent_tools' },
-        { name: 'agent_claw' },
-      ],
-    },
+    workspace_path: '',
+    sandbox_mode: true,
     memory_limit: '4G',
-    debug: false,
+    agent_debug: 'trace',
+    socket_debug: false,
   };
+}
+
+function normalizeAgentConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const nextConfig = clonePlainRecord(config);
+  const toolsConfig = isRecord(nextConfig.agent_tools) ? nextConfig.agent_tools : null;
+  const llmConfig = isRecord(nextConfig.agent_llm) ? nextConfig.agent_llm : null;
+
+  if (!('workspace_path' in nextConfig) && toolsConfig && typeof toolsConfig.workspace_path === 'string') {
+    nextConfig.workspace_path = toolsConfig.workspace_path;
+  }
+  if (!('sandbox_mode' in nextConfig) && toolsConfig && typeof toolsConfig.in_sandbox === 'boolean') {
+    nextConfig.sandbox_mode = toolsConfig.in_sandbox;
+  }
+  if (llmConfig && typeof llmConfig.work_name === 'string') {
+    llmConfig.worker_name = llmConfig.work_name;
+  }
+
+  delete nextConfig.agent_tools;
+  if (llmConfig) delete llmConfig.work_name;
+  if ('debug' in nextConfig && !('agent_debug' in nextConfig)) {
+    nextConfig.agent_debug = nextConfig.debug;
+  }
+  delete nextConfig.debug;
+
+  return nextConfig;
+}
+
+function clonePlainRecord(config: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
 }
 
 function mergeAgentConfig(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
