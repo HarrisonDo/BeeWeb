@@ -13,6 +13,7 @@ import ConnectionPanel from './components/ConnectionPanel.vue';
 import SettingsView from './components/SettingsView.vue';
 import SessionList from './components/SessionList.vue';
 import SystemLogGroup from './components/SystemLogGroup.vue';
+import SubAgentPanel from './components/SubAgentPanel.vue';
 import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
 import { useTheme } from './composables/useTheme';
@@ -96,6 +97,11 @@ const visibleChatItems = computed<VisibleChatItem[]>(() => {
   }
 
   messages.forEach((message) => {
+    // 过滤掉子agent的消息，不在主聊天区显示
+    if (message.isSubTalk === 1) {
+      return;
+    }
+
     if (message.role === 'system') {
       pendingSystemMessages.push(message);
       return;
@@ -111,6 +117,30 @@ const visibleChatItems = computed<VisibleChatItem[]>(() => {
 
   flushSystemMessages();
   return items;
+});
+
+const subAgentMessages = computed(() => {
+  const messages = sessions.activeSession.value?.messages || [];
+  return messages.filter((msg) => msg.isSubTalk === 1);
+});
+
+const subAgents = computed(() => {
+  const agents = new Map<string, { name: string; count: number }>();
+  subAgentMessages.value.forEach((msg) => {
+    const name = msg.senderName;
+    if (name) {
+      const existing = agents.get(name);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        agents.set(name, {
+          name,
+          count: 1,
+        });
+      }
+    }
+  });
+  return Array.from(agents.values());
 });
 
 function onSend(text: string, attachments: ClientAttachment[]) {
@@ -658,6 +688,15 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         >
           <ArrowDownToLine :size="18" aria-hidden="true" />
         </button>
+
+        <SubAgentPanel
+          v-if="currentView === 'chat'"
+          :labels="t"
+          :messages="subAgentMessages"
+          :sub-agents="subAgents"
+          @resend-user-message="resendUserMessage"
+          @update-user-message="updateAndResendUserMessage"
+        />
       </div>
 
       <SettingsView

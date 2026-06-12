@@ -104,6 +104,9 @@ const messages = {
     themeLight: '浅色',
     themeDark: '深色',
     language: '语言',
+    close: '关闭',
+    noMessages: '暂无消息',
+    subAgent: '子 Agent',
   },
   en: {
     activeWaiting: 'Waiting',
@@ -204,6 +207,9 @@ const messages = {
     themeLight: 'Light',
     themeDark: 'Dark',
     language: 'Language',
+    close: 'Close',
+    noMessages: 'No messages',
+    subAgent: 'Sub Agent',
   },
 } satisfies Record<Locale, Record<string, string>>;
 

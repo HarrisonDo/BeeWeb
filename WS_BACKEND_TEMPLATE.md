@@ -99,6 +99,28 @@ The frontend sends JSON strings ending with one newline character (`\n`).
 
 All server messages should be JSON strings.
 
+### Sub-Agent Support
+
+Messages can be marked as sub-agent messages by adding the `isSubTalk` field. Sub-agent messages are displayed in a separate panel on the right side instead of the main chat area.
+
+```json
+{
+  "type": "content",
+  "sessionId": "session-id",
+  "messageId": "message-id",
+  "data": "Sub-agent message content",
+  "workerName": "my_worker",
+  "workerRole": "My Worker",
+  "isSubTalk": 1
+}
+```
+
+- `isSubTalk`: Set to `1` to mark as sub-agent message, `0` or omit for main agent messages
+- `workerName`: Used to identify and group sub-agent messages (required for sub-agents)
+- `workerRole`: Display name for the sub-agent (optional)
+
+See `SUB_AGENT_FEATURE.md` for detailed documentation.
+
 ### History Response
 
 ```json

@@ -121,6 +121,7 @@ python -m http.server 8080
 - 停止生成请求。
 - 非 JSON 后端响应兜底显示。
 - Enter 发送；Windows 下 Ctrl+Enter 换行；macOS 下 Command+Enter 换行。
+- **子Agent对话独立显示**：支持将 `isSubTalk=1` 的消息在右侧独立面板显示，不干扰主聊天区。
 
 ### 后端协议
 
@@ -149,6 +150,8 @@ python -m http.server 8080
   ]
 }
 ```
+
+**子Agent支持**: 后端可以在响应中添加 `isSubTalk: 1`、`subAgentId` 和 `subAgentName` 字段，将消息标记为子Agent对话。详见 `SUB_AGENT_FEATURE.md`。
 
 ## English
 

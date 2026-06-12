@@ -30,6 +30,7 @@ export interface ChatMessage {
   think?: string;
   toolEvents?: ToolEvent[];
   status?: AssistantStatus;
+  isSubTalk?: number;
 }
 
 export interface ChatAttachment {
@@ -150,4 +151,5 @@ export interface ServerMessage {
   tool?: string;
   ok?: boolean;
   result?: unknown;
+  isSubTalk?: number;
 }

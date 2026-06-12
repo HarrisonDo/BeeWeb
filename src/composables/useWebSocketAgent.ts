@@ -509,6 +509,9 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     if (typeof msg.workerRole === 'string' && msg.workerRole.trim()) {
       message.senderRole = msg.workerRole.trim();
     }
+    if (typeof msg.isSubTalk === 'number') {
+      message.isSubTalk = msg.isSubTalk;
+    }
   }
 
   return {
