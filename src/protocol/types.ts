@@ -25,6 +25,8 @@ export interface ChatMessage {
   time: string;
   attachments?: ChatAttachment[];
   messageId?: string;
+  senderName?: string;
+  senderRole?: string;
   think?: string;
   toolEvents?: ToolEvent[];
   status?: AssistantStatus;
@@ -133,6 +135,8 @@ export interface ServerMessage {
   role?: string;
   sessionId?: string;
   messageId?: string;
+  workerName?: string;
+  workerRole?: string;
   turnId?: string;
   requestId?: string;
   message?: string;

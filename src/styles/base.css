@@ -66,6 +66,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -1042,9 +1043,25 @@ button:disabled {
 }
 
 .meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   color: var(--muted);
   font-size: 0.72rem;
   padding: 0 4px;
+}
+
+.sender-identity {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-separator {
+  flex: 0 0 auto;
+  color: var(--faint);
 }
 
 .markdown-body {
@@ -1481,6 +1498,12 @@ button:disabled {
   display: none;
 }
 
+.composer-input-shell {
+  position: relative;
+  align-self: end;
+  min-width: 0;
+}
+
 .attach-button,
 .memory-send {
   align-self: end;
@@ -1493,6 +1516,49 @@ button:disabled {
   max-height: 150px;
   resize: none;
   line-height: 1.45;
+  padding-right: clamp(136px, 24vw, 230px);
+}
+
+.composer-model-picker {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  max-width: min(220px, 44%);
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  transform: translateY(-50%);
+}
+
+.composer-model-picker svg {
+  flex: 0 0 auto;
+  color: var(--faint);
+}
+
+.composer-model-picker select {
+  min-width: 0;
+  width: 100%;
+  max-width: 176px;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  outline: none;
+  font-size: 0.76rem;
+}
+
+.composer-model-picker:focus-within {
+  border-color: var(--accent);
+}
+
+.composer-model-picker select:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
 }
 
 .send {
@@ -1664,6 +1730,19 @@ button:disabled {
 
   .composer {
     grid-template-columns: 1fr;
+  }
+
+  .composer textarea {
+    min-height: 76px;
+    padding-right: 11px;
+    padding-bottom: 42px;
+  }
+
+  .composer-model-picker {
+    top: auto;
+    bottom: 6px;
+    max-width: calc(100% - 12px);
+    transform: none;
   }
 
   .attach-button,

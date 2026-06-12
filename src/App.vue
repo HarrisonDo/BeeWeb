@@ -25,7 +25,6 @@ interface BasicSettings {
   inSandbox: boolean;
   modelName: string;
   workspacePath: string;
-  wsUrl: string;
 }
 
 type VisibleChatItem =
@@ -65,15 +64,15 @@ const agent = useWebSocketAgent({
   touchSession: sessions.touchSession,
   updateTitleFromMessage: sessions.updateTitleFromMessage,
 });
-syncWsUrlFromConfig(agentConfig.value);
-let modelsRequestedForConnection = false;
 watch(() => agent.canSend.value, (canSend) => {
   if (canSend) {
     requestServerConfigIfNeeded();
-    requestModelsForConnection();
+    if (requestModelsAfterNextConnect) {
+      requestModelsAfterNextConnect = false;
+      requestModels(true);
+    }
     return;
   }
-  modelsRequestedForConnection = false;
 });
 
 const activeMeta = computed(() => {
@@ -193,6 +192,9 @@ function toggleSidebar() {
 }
 
 let settingsConfigRequested = false;
+let refreshModelsAfterSave = false;
+let reconnectAfterSave = false;
+let requestModelsAfterNextConnect = false;
 
 function openSettings() {
   refreshConfigJson();
@@ -219,20 +221,16 @@ const basicSettings = computed<BasicSettings>(() => ({
   inSandbox: readBoolean(agentConfig.value, ['sandbox_mode'], true),
   modelName: readString(agentConfig.value, ['agent_llm', 'model']),
   workspacePath: readString(agentConfig.value, ['workspace_path']),
-  wsUrl: getWsUrlFromConfig(agentConfig.value),
 }));
 
 function updateBasicSetting(field: keyof BasicSettings, value: boolean | string) {
   const nextConfig = cloneConfig(agentConfig.value);
-  if (field === 'wsUrl') {
-    updateAgentServerFromWsUrl(nextConfig, String(value));
-  }
   if (field === 'apiUrl') setNestedValue(nextConfig, ['agent_llm', 'api_url'], String(value));
   if (field === 'apiKey') setNestedValue(nextConfig, ['agent_llm', 'api_key'], String(value));
   if (field === 'inSandbox') setNestedValue(nextConfig, ['sandbox_mode'], Boolean(value));
   if (field === 'modelName') setNestedValue(nextConfig, ['agent_llm', 'model'], String(value));
   if (field === 'workspacePath') setNestedValue(nextConfig, ['workspace_path'], String(value));
-  applyAgentConfig(nextConfig, { syncJson: true, syncWs: true });
+  applyAgentConfig(nextConfig, { syncJson: true });
   configJsonError.value = '';
 }
 
@@ -245,7 +243,7 @@ function updateConfigJson(value: string) {
       return;
     }
     configJsonError.value = '';
-    applyAgentConfig(parsed, { syncJson: false, syncWs: true });
+    applyAgentConfig(parsed, { syncJson: false });
   } catch (error) {
     configJsonError.value = error instanceof Error ? error.message : t.value.configJsonParseError;
   }
@@ -268,9 +266,26 @@ function requestDefaultServerConfig() {
 function saveServerConfig() {
   const parsed = parseConfigJson(configJson.value);
   if (!parsed) return;
-  const normalized = normalizeAgentConfig(parsed);
-  applyAgentConfig(normalized, { syncJson: true, syncWs: true });
-  sendSettingRequest('saveConfig', normalized);
+  saveAgentConfig(parsed);
+}
+
+function saveAgentConfig(
+  config: Record<string, unknown>,
+  options: { reconnect?: boolean; refreshModels?: boolean } = {},
+) {
+  const normalized = normalizeAgentConfig(config);
+  applyAgentConfig(normalized, { syncJson: true });
+  const sent = sendSettingRequest('saveConfig', normalized);
+  if (!sent) return;
+  refreshModelsAfterSave = options.refreshModels ?? true;
+  reconnectAfterSave = options.reconnect ?? false;
+}
+
+function selectComposerModel(modelName: string) {
+  if (!modelName || modelName === basicSettings.value.modelName) return;
+  const nextConfig = cloneConfig(agentConfig.value);
+  setNestedValue(nextConfig, ['agent_llm', 'model'], modelName);
+  saveAgentConfig(nextConfig, { reconnect: true, refreshModels: true });
 }
 
 function requestModels(silent = false) {
@@ -280,33 +295,36 @@ function requestModels(silent = false) {
   if (!silent) settingStatus.value = `${t.value.systemRequestSent}: getModels`;
 }
 
-function requestModelsForConnection() {
-  if (modelsRequestedForConnection) return;
-  const sent = agent.sendSystemAct('getModels');
-  if (!sent) return;
-  modelsRequestedForConnection = true;
-}
-
 function sendSettingRequest(act: ClientSettingAct, content?: unknown) {
   const sent = agent.sendSettingAct(act, content);
-  if (!sent) return;
+  if (!sent) return false;
   settingStatus.value = `${t.value.settingRequestSent}: ${act}`;
+  return true;
 }
 
 function handleSettingMessage(act: string, content: unknown, msg: ServerMessage) {
   const config = parseSettingConfig(content);
   if (config && (act === 'getConfig' || act === 'getDefaultConfig' || !act)) {
     configJsonError.value = '';
-    applyAgentConfig(config, { syncJson: true, syncWs: true });
+    applyAgentConfig(config, { syncJson: true });
     settingStatus.value = act === 'getDefaultConfig'
       ? t.value.defaultConfigLoaded
       : t.value.serverConfigLoaded;
-    if (act === 'getConfig' || !act) requestModelsForConnection();
     return;
   }
 
   if (act === 'saveConfig') {
     settingStatus.value = t.value.serverConfigSaved;
+    const shouldRefreshModels = refreshModelsAfterSave;
+    const shouldReconnect = reconnectAfterSave;
+    refreshModelsAfterSave = false;
+    reconnectAfterSave = false;
+    if (shouldReconnect) {
+      if (shouldRefreshModels) requestModelsAfterNextConnect = true;
+      agent.reconnect();
+      return;
+    }
+    if (shouldRefreshModels) requestModels();
     return;
   }
 
@@ -381,29 +399,6 @@ function parseModels(value: unknown): string[] {
   return Array.from(models);
 }
 
-function syncWsUrlFromConfig(config: Record<string, unknown>) {
-  updateWsUrl(getWsUrlFromConfig(config));
-}
-
-function getWsUrlFromConfig(config: Record<string, unknown>) {
-  const host = readString(config, ['agent_server', 'host']) || '127.0.0.1';
-  const port = readPort(config, ['agent_server', 'port'], '8686');
-  return port ? `ws://${host}:${port}` : `ws://${host}`;
-}
-
-function updateAgentServerFromWsUrl(config: Record<string, unknown>, value: string) {
-  try {
-    const parsed = new URL(value);
-    setNestedValue(config, ['agent_server', 'host'], parsed.hostname || '127.0.0.1');
-    setNestedValue(config, ['agent_server', 'port'], parsed.port ? Number(parsed.port) : 8686);
-  } catch {
-    const trimmed = value.replace(/^wss?:\/\//, '');
-    const [host, port] = trimmed.split(':');
-    setNestedValue(config, ['agent_server', 'host'], host || '127.0.0.1');
-    setNestedValue(config, ['agent_server', 'port'], port ? Number(port) : 8686);
-  }
-}
-
 onMounted(() => {
   scrollToLatestAfterRender();
   agent.startAutoConnect();
@@ -421,13 +416,11 @@ function readAgentConfig(): Record<string, unknown> {
 
 function applyAgentConfig(
   nextConfig: Record<string, unknown>,
-  options: { syncJson?: boolean; syncWs?: boolean } = {},
+  options: { syncJson?: boolean } = {},
 ) {
   const syncJson = options.syncJson ?? true;
-  const syncWs = options.syncWs ?? true;
   agentConfig.value = normalizeAgentConfig(cloneConfig(nextConfig));
   localStorage.setItem('agentbee.agentConfig', stringifyConfig(agentConfig.value));
-  if (syncWs) syncWsUrlFromConfig(agentConfig.value);
   if (syncJson) refreshConfigJson();
 }
 
@@ -445,11 +438,6 @@ function cloneConfig(config: Record<string, unknown>): Record<string, unknown> {
 
 function createDefaultAgentConfig(): Record<string, unknown> {
   return {
-    agent_server: {
-      host: '127.0.0.1',
-      port: 8686,
-      ping_interval: 60,
-    },
     agent_llm: {
       api_url: 'http://127.0.0.1:1234/v1',
       api_key: 'sk-lm-:',
@@ -516,6 +504,7 @@ function normalizeAgentConfig(config: Record<string, unknown>): Record<string, u
   }
 
   delete nextConfig.agent_tools;
+  delete nextConfig.agent_server;
   if (llmConfig) delete llmConfig.work_name;
   if ('debug' in nextConfig && !('agent_debug' in nextConfig)) {
     nextConfig.agent_debug = nextConfig.debug;
@@ -547,13 +536,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readString(source: Record<string, unknown>, path: string[]): string {
   const value = readNestedValue(source, path);
   return typeof value === 'string' ? value : '';
-}
-
-function readPort(source: Record<string, unknown>, path: string[], fallback: string): string {
-  const value = readNestedValue(source, path);
-  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-  if (typeof value === 'string') return value.trim();
-  return fallback;
 }
 
 function readBoolean(source: Record<string, unknown>, path: string[], fallback: boolean): boolean {
@@ -681,7 +663,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
       <SettingsView
         v-else
         :basic-settings="basicSettings"
-        :available-models="availableModels"
         :connected="agent.connected.value"
         :connecting="agent.connecting.value"
         :config-json="configJson"
@@ -690,8 +671,8 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :locale="locale"
         :setting-status="settingStatus"
         :theme="theme"
+        :ws-url="agent.wsUrl.value"
         @connect="agent.connect"
-        @get-models="requestModels"
         @disconnect="agent.disconnect"
         @get-config="requestServerConfig"
         @get-default-config="requestDefaultServerConfig"
@@ -700,12 +681,16 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         @set-theme="setTheme"
         @update:basic-setting="updateBasicSetting"
         @update:config-json="updateConfigJson"
+        @update:ws-url="updateWsUrl"
       />
 
       <Composer
         v-if="currentView === 'chat'"
         :labels="t"
         :disabled="!agent.canSend.value"
+        :available-models="availableModels"
+        :model-name="basicSettings.modelName"
+        @select-model="selectComposerModel"
         @send="onSend"
         @stop="agent.stopCurrent"
       />

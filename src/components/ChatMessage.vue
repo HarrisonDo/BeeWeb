@@ -42,6 +42,13 @@ const endedWithoutResponse = computed(() => (
 
 const renderedMarkdown = computed(() => renderMarkdownBlocks(props.message.content || ''));
 
+const senderIdentity = computed(() => {
+  const senderName = props.message.senderName?.trim() || '';
+  const senderRole = props.message.senderRole?.trim() || '';
+  if (senderName && senderRole) return `${senderName} - ${senderRole}`;
+  return senderName || senderRole || roleName(props.message.role);
+});
+
 function roleName(role: ChatMessage['role']) {
   return {
     user: props.labels.roleUser,
@@ -192,7 +199,11 @@ function renderMarkdownBlocks(markdown: string) {
       <span class="system-log-time">{{ message.time }}</span>
     </div>
     <template v-else>
-    <div class="meta">{{ roleName(message.role) }} · {{ message.time }}</div>
+    <div class="meta">
+      <span class="sender-identity">{{ senderIdentity }}</span>
+      <span class="meta-separator">·</span>
+      <span>{{ message.time }}</span>
+    </div>
     <div class="bubble">
       <FoldBlock
         v-if="message.think"

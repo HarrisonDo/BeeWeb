@@ -46,6 +46,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   let currentConnectIsAuto = false;
   let autoConnectAttempts = 0;
   let autoConnectStartedAt = 0;
+  let reconnectAfterClose = false;
 
   const canSend = computed(() => connected.value && socket.value?.readyState === WebSocket.OPEN);
   const hasPendingTurns = computed(() => pendingTurns.value.size > 0);
@@ -110,6 +111,11 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       socket.value = null;
       if (wasAuto && !manualDisconnect) {
         scheduleAutoReconnect();
+        return;
+      }
+      if (reconnectAfterClose) {
+        reconnectAfterClose = false;
+        window.setTimeout(() => connect(false), 100);
       }
     };
   }
@@ -117,6 +123,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   function disconnect() {
     manualDisconnect = true;
     autoConnectPaused.value = true;
+    reconnectAfterClose = false;
     clearAutoRetryTimer();
     if (socket.value) {
       socket.value.close(1000, 'User disconnected');
@@ -124,6 +131,21 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       connected.value = false;
       connecting.value = false;
     }
+  }
+
+  function reconnect() {
+    clearAutoRetryTimer();
+    autoConnectPaused.value = false;
+    manualDisconnect = false;
+    currentConnectIsAuto = false;
+
+    if (socket.value && socket.value.readyState !== WebSocket.CLOSED) {
+      reconnectAfterClose = true;
+      socket.value.close(1000, 'Reconnecting');
+      return;
+    }
+
+    window.setTimeout(() => connect(false), 0);
   }
 
   function startAutoConnect() {
@@ -267,18 +289,18 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
       return;
     }
     if (type === 'history') return;
-    if (['content', 'assistant', 'message'].includes(type)) return appendAssistantContent(messageId, normalizePayload(msg));
-    if (['think', 'thinking', 'status'].includes(type)) return appendAssistantThink(messageId, normalizePayload(msg));
+    if (['content', 'assistant', 'message'].includes(type)) return appendAssistantContent(messageId, normalizePayload(msg), msg);
+    if (['think', 'thinking', 'status'].includes(type)) return appendAssistantThink(messageId, normalizePayload(msg), msg);
     if (['tool_calls', 'tool_call', 'tool'].includes(type)) return appendAssistantToolEvent(messageId, 'tool_calls', msg);
     if (type === 'tool_result') return appendAssistantToolEvent(messageId, 'tool_result', msg);
     if (type === 'error') {
       options.addMessage('error', msg.message || normalizePayload(msg) || 'Server returned an error.');
-      return finishAssistantMessage(messageId, 'error');
+      return finishAssistantMessage(messageId, 'error', msg);
     }
-    if (['end', 'done', 'finish'].includes(type)) return finishAssistantMessage(messageId, 'done');
+    if (['end', 'done', 'finish'].includes(type)) return finishAssistantMessage(messageId, 'done', msg);
     if (type === 'close') return closeAssistantMessage(messageId);
 
-    appendAssistantContent(messageId, JSON.stringify(msg, null, 2));
+    appendAssistantContent(messageId, JSON.stringify(msg, null, 2), msg);
   }
 
   function ensureAssistantMessage(messageId: string | null) {
@@ -307,20 +329,22 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     return { session, assistant, messageId: resolvedMessageId };
   }
 
-  function appendAssistantContent(messageId: string | null, text: string) {
+  function appendAssistantContent(messageId: string | null, text: string, msg?: ServerMessage) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
+    applySenderMeta(turn.assistant, msg);
     turn.assistant.content += text || '';
     turn.assistant.status = 'loading';
     options.touchSession(turn.session);
     options.saveSessions();
   }
 
-  function appendAssistantThink(messageId: string | null, text: string) {
+  function appendAssistantThink(messageId: string | null, text: string, msg?: ServerMessage) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
+    applySenderMeta(turn.assistant, msg);
     turn.assistant.think = `${turn.assistant.think || ''}${text || ''}`;
     turn.assistant.status = 'loading';
     options.touchSession(turn.session);
@@ -331,6 +355,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     const turn = ensureAssistantMessage(messageId);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
+    applySenderMeta(turn.assistant, msg);
     turn.assistant.toolEvents ||= [];
     turn.assistant.toolEvents.push(normalizeToolEvent(kind, msg, makeId, nowTime));
     turn.assistant.status = 'loading';
@@ -338,7 +363,11 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     options.saveSessions();
   }
 
-  function finishAssistantMessage(messageId: string | null, status: 'done' | 'error' | 'stopped') {
+  function finishAssistantMessage(
+    messageId: string | null,
+    status: 'done' | 'error' | 'stopped',
+    msg?: ServerMessage,
+  ) {
     const resolvedMessageId = messageId || getLatestPendingMessageId();
     if (resolvedMessageId) clearNoResponseTimer(resolvedMessageId);
     const session = options.activeSession();
@@ -347,6 +376,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
         message.role === 'assistant' && message.messageId === resolvedMessageId
       ));
       if (assistant) {
+        applySenderMeta(assistant, msg);
         assistant.status = status;
       }
     }
@@ -471,6 +501,16 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     return ids.length ? ids[ids.length - 1] : null;
   }
 
+  function applySenderMeta(message: ChatMessage, msg?: ServerMessage) {
+    if (!msg) return;
+    if (typeof msg.workerName === 'string' && msg.workerName.trim()) {
+      message.senderName = msg.workerName.trim();
+    }
+    if (typeof msg.workerRole === 'string' && msg.workerRole.trim()) {
+      message.senderRole = msg.workerRole.trim();
+    }
+  }
+
   return {
     canSend,
     clearPendingTurns,
@@ -480,6 +520,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     disconnect,
     autoConnectPaused,
     hasPendingTurns,
+    reconnect,
     resendEditedText,
     sendSettingAct,
     sendSystemAct,

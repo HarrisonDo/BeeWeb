@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { MemoryStick, Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
+import { Bot, MemoryStick, Paperclip, SendHorizontal, Square, X } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import type { ClientAttachment } from '../protocol/types';
 
 const props = defineProps<{
+  availableModels: string[];
   disabled: boolean;
   labels: Record<string, string>;
+  modelName: string;
 }>();
 
 const emit = defineEmits<{
+  selectModel: [modelName: string];
   send: [text: string, attachments: ClientAttachment[]];
   stop: [];
 }>();
@@ -303,6 +306,12 @@ function saveMemory() {
   emit('send', props.labels.saveMemoryMessage, []);
 }
 
+function onModelChange(event: Event) {
+  const modelName = (event.target as HTMLSelectElement).value;
+  if (!modelName || modelName === props.modelName) return;
+  emit('selectModel', modelName);
+}
+
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter') return;
   const shouldInsertNewline = isMac ? event.metaKey : event.ctrlKey;
@@ -463,15 +472,39 @@ function makeAttachmentId() {
     >
       <MemoryStick :size="17" aria-hidden="true" />
     </button>
-    <textarea
-      ref="textarea"
-      v-model="text"
-      rows="1"
-      :placeholder="labels.composerPlaceholder"
-      :disabled="disabled"
-      @input="resize"
-      @keydown="onKeydown"
-    ></textarea>
+    <div class="composer-input-shell">
+      <textarea
+        ref="textarea"
+        v-model="text"
+        rows="1"
+        :placeholder="labels.composerPlaceholder"
+        :disabled="disabled"
+        @input="resize"
+        @keydown="onKeydown"
+      ></textarea>
+      <div class="composer-model-picker" :title="labels.modelName">
+        <Bot :size="14" aria-hidden="true" />
+        <select
+          :aria-label="labels.modelName"
+          :value="modelName"
+          :disabled="disabled || (!availableModels.length && !modelName)"
+          @change="onModelChange"
+        >
+          <option v-if="!availableModels.length" :value="modelName">
+            {{ modelName || labels.noModelsAvailable }}
+          </option>
+          <option
+            v-else-if="modelName && !availableModels.includes(modelName)"
+            :value="modelName"
+          >
+            {{ modelName }}
+          </option>
+          <option v-for="model in availableModels" :key="model" :value="model">
+            {{ model }}
+          </option>
+        </select>
+      </div>
+    </div>
     <input
       ref="fileInput"
       class="file-input"

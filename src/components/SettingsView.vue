@@ -9,7 +9,6 @@ import {
   KeyRound,
   Languages,
   Link,
-  ListRestart,
   LogIn,
   LogOut,
   Moon,
@@ -31,11 +30,9 @@ interface BasicSettings {
   inSandbox: boolean;
   modelName: string;
   workspacePath: string;
-  wsUrl: string;
 }
 
 defineProps<{
-  availableModels: string[];
   basicSettings: BasicSettings;
   connected: boolean;
   connecting: boolean;
@@ -45,6 +42,7 @@ defineProps<{
   locale: Locale;
   settingStatus: string;
   theme: Theme;
+  wsUrl: string;
 }>();
 
 const emit = defineEmits<{
@@ -52,12 +50,12 @@ const emit = defineEmits<{
   disconnect: [];
   getConfig: [];
   getDefaultConfig: [];
-  getModels: [];
   saveConfig: [];
   setLocale: [locale: Locale];
   setTheme: [theme: Theme];
   'update:basicSetting': [field: keyof BasicSettings, value: boolean | string];
   'update:configJson': [value: string];
+  'update:wsUrl': [value: string];
 }>();
 
 const advancedExpanded = ref(false);
@@ -124,43 +122,52 @@ const advancedExpanded = ref(false);
     </div>
 
     <div class="settings-section">
-      <div class="settings-grid two-column">
-        <label class="settings-field" for="agentServerWsUrl">
-          <span>
-            <Link :size="14" aria-hidden="true" />
-            {{ labels.wsUrl }}
-          </span>
-          <div class="settings-input-actions">
-            <input
-              id="agentServerWsUrl"
-              :value="basicSettings.wsUrl"
-              :disabled="connected"
-              type="text"
-              placeholder="ws://127.0.0.1:8686"
-              @input="emit('update:basicSetting', 'wsUrl', ($event.target as HTMLInputElement).value)"
-            />
-            <div class="settings-input-button-group">
-              <button
-                type="button"
-                class="icon-button"
-                :title="labels.connect"
-                :disabled="connected || connecting"
-                @click="emit('connect')"
-              >
-                <LogIn :size="15" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                :title="labels.disconnect"
-                :disabled="!connected && !connecting"
-                @click="emit('disconnect')"
-              >
-                <LogOut :size="15" aria-hidden="true" />
-              </button>
-            </div>
+      <div class="settings-section-title">
+        <Link :size="17" aria-hidden="true" />
+        <div>
+          <h2>{{ labels.wsSettings }}</h2>
+          <p>{{ labels.wsSettingsHint }}</p>
+        </div>
+      </div>
+      <label class="settings-field" for="agentServerWsUrl">
+        <span>
+          <Link :size="14" aria-hidden="true" />
+          {{ labels.wsUrl }}
+        </span>
+        <div class="settings-input-actions">
+          <input
+            id="agentServerWsUrl"
+            :value="wsUrl"
+            type="text"
+            placeholder="ws://127.0.0.1:8686"
+            @input="emit('update:wsUrl', ($event.target as HTMLInputElement).value)"
+          />
+          <div class="settings-input-button-group">
+            <button
+              type="button"
+              class="icon-button"
+              :title="labels.connect"
+              :disabled="connected || connecting"
+              @click="emit('connect')"
+            >
+              <LogIn :size="15" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              :title="labels.disconnect"
+              :disabled="!connected && !connecting"
+              @click="emit('disconnect')"
+            >
+              <LogOut :size="15" aria-hidden="true" />
+            </button>
           </div>
-        </label>
+        </div>
+      </label>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-grid two-column">
         <label class="settings-field" for="customModelApiUrl">
           <span>
             <Server :size="14" aria-hidden="true" />
@@ -194,29 +201,12 @@ const advancedExpanded = ref(false);
             <Bot :size="14" aria-hidden="true" />
             {{ labels.modelName }}
           </span>
-          <div class="settings-inline-control">
-            <select
-              id="customModelName"
-              :value="basicSettings.modelName"
-              @change="emit('update:basicSetting', 'modelName', ($event.target as HTMLSelectElement).value)"
-            >
-              <option v-if="!availableModels.length" :value="basicSettings.modelName">
-                {{ basicSettings.modelName || labels.noModelsAvailable }}
-              </option>
-              <option
-                v-else-if="basicSettings.modelName && !availableModels.includes(basicSettings.modelName)"
-                :value="basicSettings.modelName"
-              >
-                {{ basicSettings.modelName }}
-              </option>
-              <option v-for="model in availableModels" :key="model" :value="model">
-                {{ model }}
-              </option>
-            </select>
-            <button type="button" class="icon-button" :title="labels.getModels" @click="emit('getModels')">
-              <ListRestart :size="15" aria-hidden="true" />
-            </button>
-          </div>
+          <input
+            id="customModelName"
+            :value="basicSettings.modelName"
+            type="text"
+            @input="emit('update:basicSetting', 'modelName', ($event.target as HTMLInputElement).value)"
+          />
         </label>
         <label class="settings-field" for="agentWorkspacePath">
           <span>
