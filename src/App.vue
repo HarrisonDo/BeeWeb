@@ -690,7 +690,6 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         </button>
 
         <SubAgentPanel
-          v-if="currentView === 'chat'"
           :labels="t"
           :messages="subAgentMessages"
           :sub-agents="subAgents"

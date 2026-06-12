@@ -87,9 +87,17 @@ function onUpdateUserMessage(messageId: string, content: string) {
 
 <style scoped>
 .subagent-container {
-  position: relative;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: stretch;
+  pointer-events: none;
+}
+
+.subagent-container > * {
+  pointer-events: auto;
 }
 
 .subagent-tabs {
