@@ -303,12 +303,16 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     appendAssistantContent(messageId, JSON.stringify(msg, null, 2), msg);
   }
 
-  function ensureAssistantMessage(messageId: string | null) {
+  function ensureAssistantMessage(messageId: string | null, msg?: ServerMessage) {
     const session = options.activeSession();
     if (!session) return null;
     const resolvedMessageId = messageId || getLatestPendingMessageId() || makeId();
+    const isSubTalk = msg?.isSubTalk === 1;
+
     let assistant = session.messages.find((message) => (
-      message.role === 'assistant' && message.messageId === resolvedMessageId
+      message.role === 'assistant' &&
+      message.messageId === resolvedMessageId &&
+      (message.isSubTalk === 1) === isSubTalk
     ));
 
     if (!assistant) {
@@ -321,6 +325,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
         toolEvents: [],
         status: 'loading',
         time: nowTime(),
+        isSubTalk: isSubTalk ? 1 : 0,
       };
       session.messages.push(assistant);
     }
@@ -330,7 +335,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   }
 
   function appendAssistantContent(messageId: string | null, text: string, msg?: ServerMessage) {
-    const turn = ensureAssistantMessage(messageId);
+    const turn = ensureAssistantMessage(messageId, msg);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
     applySenderMeta(turn.assistant, msg);
@@ -341,7 +346,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   }
 
   function appendAssistantThink(messageId: string | null, text: string, msg?: ServerMessage) {
-    const turn = ensureAssistantMessage(messageId);
+    const turn = ensureAssistantMessage(messageId, msg);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
     applySenderMeta(turn.assistant, msg);
@@ -352,7 +357,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
   }
 
   function appendAssistantToolEvent(messageId: string | null, kind: 'tool_calls' | 'tool_result', msg: ServerMessage) {
-    const turn = ensureAssistantMessage(messageId);
+    const turn = ensureAssistantMessage(messageId, msg);
     if (!turn) return;
     clearNoResponseTimer(turn.messageId);
     applySenderMeta(turn.assistant, msg);

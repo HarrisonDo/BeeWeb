@@ -45,8 +45,20 @@ const renderedMarkdown = computed(() => renderMarkdownBlocks(props.message.conte
 const senderIdentity = computed(() => {
   const senderName = props.message.senderName?.trim() || '';
   const senderRole = props.message.senderRole?.trim() || '';
-  if (senderName && senderRole) return `${senderName} - ${senderRole}`;
-  return senderName || senderRole || roleName(props.message.role);
+  const messageId = props.message.messageId?.trim() || '';
+
+  let identity = '';
+  if (senderName && senderRole) {
+    identity = `${senderName} - ${senderRole}`;
+  } else {
+    identity = senderName || senderRole || roleName(props.message.role);
+  }
+
+  if (messageId) {
+    identity += ` [${messageId}]`;
+  }
+
+  return identity;
 });
 
 function roleName(role: ChatMessage['role']) {
