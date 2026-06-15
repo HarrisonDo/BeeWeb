@@ -217,6 +217,13 @@ function resendUserMessage(messageId: string) {
   maybeScrollAfterUpdate();
 }
 
+function deleteSubAgent(agentName: string) {
+  const session = sessions.activeSession.value;
+  if (!session) return;
+  session.messages = session.messages.filter((msg) => msg.senderName !== agentName);
+  sessions.saveSessions();
+}
+
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
@@ -695,6 +702,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           :sub-agents="subAgents"
           @resend-user-message="resendUserMessage"
           @update-user-message="updateAndResendUserMessage"
+          @delete-sub-agent="deleteSubAgent"
         />
       </div>
 

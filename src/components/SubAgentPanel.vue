@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { MessageSquare, X } from 'lucide-vue-next';
+import { MessageSquare, X, Trash2 } from 'lucide-vue-next';
 import ChatMessage from './ChatMessage.vue';
 import type { ChatMessage as AgentChatMessage } from '../protocol/types';
 
@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   resendUserMessage: [messageId: string];
   updateUserMessage: [messageId: string, content: string];
+  deleteSubAgent: [agentName: string];
 }>();
 
 const selectedAgentName = ref<string | null>(null);
@@ -30,6 +31,13 @@ function selectAgent(agentName: string) {
 
 function closePanel() {
   isPanelOpen.value = false;
+}
+
+function deleteSubAgent() {
+  if (!selectedAgentName.value) return;
+  emit('deleteSubAgent', selectedAgentName.value);
+  isPanelOpen.value = false;
+  selectedAgentName.value = null;
 }
 
 function onResendUserMessage(messageId: string) {
@@ -64,9 +72,14 @@ function onUpdateUserMessage(messageId: string, content: string) {
           <MessageSquare :size="16" aria-hidden="true" />
           <span>{{ selectedAgentName }}</span>
         </div>
-        <button type="button" class="icon-button" :title="labels.close || 'Close'" @click="closePanel">
-          <X :size="16" aria-hidden="true" />
-        </button>
+        <div class="subagent-header-actions">
+          <button type="button" class="icon-button delete-button" :title="labels.deleteSession || 'Delete'" @click="deleteSubAgent">
+            <Trash2 :size="16" aria-hidden="true" />
+          </button>
+          <button type="button" class="icon-button" :title="labels.close || 'Close'" @click="closePanel">
+            <X :size="16" aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div class="subagent-messages">
         <div v-if="!filteredMessages.length" class="subagent-empty">
@@ -186,6 +199,12 @@ function onUpdateUserMessage(messageId: string, content: string) {
   color: var(--text);
 }
 
+.subagent-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .subagent-messages {
   flex: 1;
   overflow-y: auto;
@@ -193,6 +212,7 @@ function onUpdateUserMessage(messageId: string, content: string) {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 100%;
 }
 
 .subagent-empty {
@@ -223,5 +243,15 @@ function onUpdateUserMessage(messageId: string, content: string) {
   background: var(--surface-raised);
   color: var(--text);
   border-color: var(--line);
+}
+
+.delete-button {
+  color: var(--danger);
+}
+
+.delete-button:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
 }
 </style>
