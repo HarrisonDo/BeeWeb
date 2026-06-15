@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { MessageSquare, X, Trash2 } from 'lucide-vue-next';
+import { MessageSquare, X } from 'lucide-vue-next';
 import ChatMessage from './ChatMessage.vue';
 import type { ChatMessage as AgentChatMessage } from '../protocol/types';
 
@@ -33,11 +33,13 @@ function closePanel() {
   isPanelOpen.value = false;
 }
 
-function deleteSubAgent() {
-  if (!selectedAgentName.value) return;
-  emit('deleteSubAgent', selectedAgentName.value);
-  isPanelOpen.value = false;
-  selectedAgentName.value = null;
+function deleteSubAgent(agentName: string, event: MouseEvent) {
+  event.stopPropagation();
+  emit('deleteSubAgent', agentName);
+  if (selectedAgentName.value === agentName) {
+    isPanelOpen.value = false;
+    selectedAgentName.value = null;
+  }
 }
 
 function onResendUserMessage(messageId: string) {
@@ -52,18 +54,30 @@ function onUpdateUserMessage(messageId: string, content: string) {
 <template>
   <div class="subagent-container">
     <div v-if="subAgents.length" class="subagent-tabs">
-      <button
+      <div
         v-for="agent in subAgents"
         :key="agent.name"
-        type="button"
-        class="subagent-tab"
-        :class="{ active: selectedAgentName === agent.name && isPanelOpen }"
-        :title="agent.name"
-        @click="selectAgent(agent.name)"
+        class="subagent-tab-wrapper"
       >
-        <MessageSquare :size="18" aria-hidden="true" />
-        <span v-if="agent.count > 0" class="subagent-badge">{{ agent.count }}</span>
-      </button>
+        <button
+          type="button"
+          class="subagent-tab"
+          :class="{ active: selectedAgentName === agent.name && isPanelOpen }"
+          :title="agent.name"
+          @click="selectAgent(agent.name)"
+        >
+          <MessageSquare :size="18" aria-hidden="true" />
+          <span v-if="agent.count > 0" class="subagent-badge">{{ agent.count }}</span>
+        </button>
+        <button
+          type="button"
+          class="subagent-delete"
+          :title="labels.deleteSession || 'Delete'"
+          @click="deleteSubAgent(agent.name, $event)"
+        >
+          <X :size="12" aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
     <div v-if="isPanelOpen && selectedAgentName" class="subagent-panel">
@@ -72,14 +86,9 @@ function onUpdateUserMessage(messageId: string, content: string) {
           <MessageSquare :size="16" aria-hidden="true" />
           <span>{{ selectedAgentName }}</span>
         </div>
-        <div class="subagent-header-actions">
-          <button type="button" class="icon-button delete-button" :title="labels.deleteSession || 'Delete'" @click="deleteSubAgent">
-            <Trash2 :size="16" aria-hidden="true" />
-          </button>
-          <button type="button" class="icon-button" :title="labels.close || 'Close'" @click="closePanel">
-            <X :size="16" aria-hidden="true" />
-          </button>
-        </div>
+        <button type="button" class="icon-button" :title="labels.close || 'Close'" @click="closePanel">
+          <X :size="16" aria-hidden="true" />
+        </button>
       </div>
       <div class="subagent-messages">
         <div v-if="!filteredMessages.length" class="subagent-empty">
@@ -120,6 +129,10 @@ function onUpdateUserMessage(messageId: string, content: string) {
   padding: 12px 8px;
   background: var(--sidebar-bg);
   border-left: 1px solid var(--line);
+}
+
+.subagent-tab-wrapper {
+  position: relative;
 }
 
 .subagent-tab {
@@ -168,6 +181,35 @@ function onUpdateUserMessage(messageId: string, content: string) {
   border: 2px solid var(--sidebar-bg);
 }
 
+.subagent-delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  border: 2px solid var(--sidebar-bg);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.subagent-tab-wrapper:hover .subagent-delete {
+  opacity: 1;
+}
+
+.subagent-delete:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
 .subagent-panel {
   position: absolute;
   right: 60px;
@@ -197,12 +239,6 @@ function onUpdateUserMessage(messageId: string, content: string) {
   gap: 8px;
   font-weight: 600;
   color: var(--text);
-}
-
-.subagent-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .subagent-messages {
@@ -243,15 +279,5 @@ function onUpdateUserMessage(messageId: string, content: string) {
   background: var(--surface-raised);
   color: var(--text);
   border-color: var(--line);
-}
-
-.delete-button {
-  color: var(--danger);
-}
-
-.delete-button:hover {
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-color: var(--danger);
 }
 </style>
