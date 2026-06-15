@@ -68,10 +68,7 @@ const agent = useWebSocketAgent({
 watch(() => agent.canSend.value, (canSend) => {
   if (canSend) {
     requestServerConfigIfNeeded();
-    if (requestModelsAfterNextConnect) {
-      requestModelsAfterNextConnect = false;
-      requestModels(true);
-    }
+    requestModels(true);
     return;
   }
 });

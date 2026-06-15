@@ -196,18 +196,6 @@ const advancedExpanded = ref(false);
           />
           <small class="settings-field-hint">{{ labels.apiKeyEncryptedHint }}</small>
         </label>
-        <label class="settings-field" for="customModelName">
-          <span>
-            <Bot :size="14" aria-hidden="true" />
-            {{ labels.modelName }}
-          </span>
-          <input
-            id="customModelName"
-            :value="basicSettings.modelName"
-            type="text"
-            @input="emit('update:basicSetting', 'modelName', ($event.target as HTMLInputElement).value)"
-          />
-        </label>
         <label class="settings-field" for="agentWorkspacePath">
           <span>
             <FolderOpen :size="14" aria-hidden="true" />
