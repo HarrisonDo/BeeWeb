@@ -478,6 +478,18 @@ button:disabled {
   background: var(--surface-raised);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-actions .icon-button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .chat-shell {
   position: relative;
   min-height: 0;
@@ -1452,7 +1464,7 @@ button:disabled {
 
 .composer {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   align-items: end;
   gap: 10px;
   padding: clamp(10px, 1.4vw, 14px) clamp(10px, 1.6vw, 18px);

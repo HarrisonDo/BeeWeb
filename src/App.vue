@@ -49,6 +49,7 @@ const configJson = ref(JSON.stringify(agentConfig.value, null, 2));
 const configJsonError = ref('');
 const settingStatus = ref('');
 const availableModels = ref<string[]>([]);
+const showDebugInfo = ref(false);
 
 const { locale, setLocale, t } = useI18n();
 const { setTheme, theme } = useTheme();
@@ -67,7 +68,10 @@ const agent = useWebSocketAgent({
 });
 watch(() => agent.canSend.value, (canSend) => {
   if (canSend) {
-    requestServerConfigIfNeeded();
+    const sent = agent.sendSettingAct('getConfig');
+    if (sent) {
+      // Config will be applied in handleSettingMessage
+    }
     requestModels(true);
     return;
   }
@@ -124,7 +128,7 @@ const subAgentMessages = computed(() => {
 const subAgents = computed(() => {
   const agents = new Map<string, { name: string; count: number }>();
   subAgentMessages.value.forEach((msg) => {
-    const name = msg.senderName;
+    const name = msg.windowName;
     if (name) {
       const existing = agents.get(name);
       if (existing) {
@@ -217,7 +221,7 @@ function resendUserMessage(messageId: string) {
 function deleteSubAgent(agentName: string) {
   const session = sessions.activeSession.value;
   if (!session) return;
-  session.messages = session.messages.filter((msg) => msg.senderName !== agentName);
+  session.messages = session.messages.filter((msg) => msg.windowName !== agentName);
   sessions.saveSessions();
 }
 
@@ -652,15 +656,27 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           <strong>{{ currentView === 'settings' ? t.settings : (sessions.activeSession.value?.title || t.newConversation) }}</strong>
           <span>{{ activeMeta }}</span>
         </div>
-        <button
-          v-if="currentView === 'settings'"
-          type="button"
-          class="topbar-close icon-button"
-          :title="t.closeSettings"
-          @click="closeSettings"
-        >
-          <X :size="17" aria-hidden="true" />
-        </button>
+        <div class="topbar-actions">
+          <button
+            v-if="currentView === 'chat'"
+            type="button"
+            class="icon-button"
+            :class="{ active: showDebugInfo }"
+            title="Toggle Debug Info"
+            @click="showDebugInfo = !showDebugInfo"
+          >
+            <span style="font-size: 12px; font-weight: 600;">ID</span>
+          </button>
+          <button
+            v-if="currentView === 'settings'"
+            type="button"
+            class="topbar-close icon-button"
+            :title="t.closeSettings"
+            @click="closeSettings"
+          >
+            <X :size="17" aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       <div v-if="currentView === 'chat'" class="chat-shell">
@@ -678,6 +694,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
               v-else
               :labels="t"
               :message="item.message"
+              :show-debug-info="showDebugInfo"
               @resend-user-message="resendUserMessage"
               @update-user-message="updateAndResendUserMessage"
             />
@@ -697,6 +714,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           :labels="t"
           :messages="subAgentMessages"
           :sub-agents="subAgents"
+          :show-debug-info="showDebugInfo"
           @resend-user-message="resendUserMessage"
           @update-user-message="updateAndResendUserMessage"
           @delete-sub-agent="deleteSubAgent"

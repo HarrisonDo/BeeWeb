@@ -8,6 +8,7 @@ const props = defineProps<{
   labels: Record<string, string>;
   messages: AgentChatMessage[];
   subAgents: Array<{ name: string; count: number }>;
+  showDebugInfo: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -21,7 +22,7 @@ const isPanelOpen = ref(false);
 
 const filteredMessages = computed(() => {
   if (!selectedAgentName.value) return [];
-  return props.messages.filter((msg) => msg.senderName === selectedAgentName.value);
+  return props.messages.filter((msg) => msg.windowName === selectedAgentName.value);
 });
 
 function selectAgent(agentName: string) {
@@ -66,7 +67,7 @@ function onUpdateUserMessage(messageId: string, content: string) {
           :title="agent.name"
           @click="selectAgent(agent.name)"
         >
-          <MessageSquare :size="18" aria-hidden="true" />
+          <span class="subagent-tab-char">{{ agent.name.charAt(0).toUpperCase() }}</span>
           <span v-if="agent.count > 0" class="subagent-badge">{{ agent.count }}</span>
         </button>
         <button
@@ -99,6 +100,7 @@ function onUpdateUserMessage(messageId: string, content: string) {
           :key="message.id"
           :labels="labels"
           :message="message"
+          :show-debug-info="showDebugInfo"
           @resend-user-message="onResendUserMessage"
           @update-user-message="onUpdateUserMessage"
         />
@@ -161,6 +163,12 @@ function onUpdateUserMessage(messageId: string, content: string) {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
+}
+
+.subagent-tab-char {
+  font-size: 18px;
+  font-weight: 600;
+  user-select: none;
 }
 
 .subagent-badge {

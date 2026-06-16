@@ -9,6 +9,7 @@ import type { ChatMessage } from '../protocol/types';
 const props = defineProps<{
   labels: Record<string, string>;
   message: ChatMessage;
+  showDebugInfo?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -54,7 +55,7 @@ const senderIdentity = computed(() => {
     identity = senderName || senderRole || roleName(props.message.role);
   }
 
-  if (messageId) {
+  if (props.showDebugInfo && messageId) {
     identity += ` [${messageId}]`;
   }
 
