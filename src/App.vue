@@ -656,27 +656,15 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
           <strong>{{ currentView === 'settings' ? t.settings : (sessions.activeSession.value?.title || t.newConversation) }}</strong>
           <span>{{ activeMeta }}</span>
         </div>
-        <div class="topbar-actions">
-          <button
-            v-if="currentView === 'chat'"
-            type="button"
-            class="icon-button"
-            :class="{ active: showDebugInfo }"
-            title="Toggle Debug Info"
-            @click="showDebugInfo = !showDebugInfo"
-          >
-            <span style="font-size: 12px; font-weight: 600;">ID</span>
-          </button>
-          <button
-            v-if="currentView === 'settings'"
-            type="button"
-            class="topbar-close icon-button"
-            :title="t.closeSettings"
-            @click="closeSettings"
-          >
-            <X :size="17" aria-hidden="true" />
-          </button>
-        </div>
+        <button
+          v-if="currentView === 'settings'"
+          type="button"
+          class="topbar-close icon-button"
+          :title="t.closeSettings"
+          @click="closeSettings"
+        >
+          <X :size="17" aria-hidden="true" />
+        </button>
       </header>
 
       <div v-if="currentView === 'chat'" class="chat-shell">
@@ -731,6 +719,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :labels="t"
         :locale="locale"
         :setting-status="settingStatus"
+        :show-debug-info="showDebugInfo"
         :theme="theme"
         :ws-url="agent.wsUrl.value"
         @connect="agent.connect"
@@ -742,6 +731,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         @set-theme="setTheme"
         @update:basic-setting="updateBasicSetting"
         @update:config-json="updateConfigJson"
+        @update:show-debug-info="showDebugInfo = $event"
         @update:ws-url="updateWsUrl"
       />
 

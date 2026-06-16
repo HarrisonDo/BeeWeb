@@ -41,6 +41,7 @@ defineProps<{
   labels: Record<string, string>;
   locale: Locale;
   settingStatus: string;
+  showDebugInfo: boolean;
   theme: Theme;
   wsUrl: string;
 }>();
@@ -55,6 +56,7 @@ const emit = defineEmits<{
   setTheme: [theme: Theme];
   'update:basicSetting': [field: keyof BasicSettings, value: boolean | string];
   'update:configJson': [value: string];
+  'update:showDebugInfo': [value: boolean];
   'update:wsUrl': [value: string];
 }>();
 
@@ -115,6 +117,28 @@ const advancedExpanded = ref(false);
               @click="emit('setLocale', 'en')"
             >
               EN
+            </button>
+          </div>
+        </div>
+        <div class="settings-preference-row">
+          <span class="settings-preference-label">
+            <Code2 :size="14" aria-hidden="true" />
+            Debug Info
+          </span>
+          <div class="settings-segmented" role="group" aria-label="Debug Info">
+            <button
+              type="button"
+              :class="{ active: !showDebugInfo }"
+              @click="emit('update:showDebugInfo', false)"
+            >
+              <span>Off</span>
+            </button>
+            <button
+              type="button"
+              :class="{ active: showDebugInfo }"
+              @click="emit('update:showDebugInfo', true)"
+            >
+              <span>On</span>
             </button>
           </div>
         </div>
