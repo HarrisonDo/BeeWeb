@@ -128,7 +128,7 @@ const subAgentMessages = computed(() => {
 const subAgents = computed(() => {
   const agents = new Map<string, { name: string; count: number }>();
   subAgentMessages.value.forEach((msg) => {
-    const name = msg.windowName;
+    const name = msg.WindowName;
     if (name) {
       const existing = agents.get(name);
       if (existing) {
@@ -221,7 +221,7 @@ function resendUserMessage(messageId: string) {
 function deleteSubAgent(agentName: string) {
   const session = sessions.activeSession.value;
   if (!session) return;
-  session.messages = session.messages.filter((msg) => msg.windowName !== agentName);
+  session.messages = session.messages.filter((msg) => msg.WindowName !== agentName);
   sessions.saveSessions();
 }
 

@@ -27,7 +27,7 @@ export interface ChatMessage {
   messageId?: string;
   senderName?: string;
   senderRole?: string;
-  windowName?: string;
+  WindowName?: string;
   think?: string;
   toolEvents?: ToolEvent[];
   status?: AssistantStatus;
@@ -139,7 +139,7 @@ export interface ServerMessage {
   messageId?: string;
   workerName?: string;
   workerRole?: string;
-  windowName?: string;
+  WindowName?: string;
   turnId?: string;
   requestId?: string;
   message?: string;

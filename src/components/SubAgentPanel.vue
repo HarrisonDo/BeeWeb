@@ -22,7 +22,7 @@ const isPanelOpen = ref(false);
 
 const filteredMessages = computed(() => {
   if (!selectedAgentName.value) return [];
-  return props.messages.filter((msg) => msg.windowName === selectedAgentName.value);
+  return props.messages.filter((msg) => msg.WindowName === selectedAgentName.value);
 });
 
 function selectAgent(agentName: string) {

@@ -514,8 +514,8 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     if (typeof msg.workerRole === 'string' && msg.workerRole.trim()) {
       message.senderRole = msg.workerRole.trim();
     }
-    if (typeof msg.windowName === 'string' && msg.windowName.trim()) {
-      message.windowName = msg.windowName.trim();
+    if (typeof msg.WindowName === 'string' && msg.WindowName.trim()) {
+      message.WindowName = msg.WindowName.trim();
     }
     if (typeof msg.isSubTalk === 'number') {
       message.isSubTalk = msg.isSubTalk;
