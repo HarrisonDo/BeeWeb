@@ -725,6 +725,14 @@ button:disabled {
 .settings-field select {
   height: 40px;
   appearance: auto;
+  color-scheme: inherit;
+  background-color: var(--surface);
+}
+
+.settings-field select option,
+.composer-model-picker select option {
+  color: var(--text);
+  background-color: var(--surface);
 }
 
 .settings-input-actions {
@@ -1563,7 +1571,8 @@ button:disabled {
   max-width: 176px;
   border: 0;
   color: var(--text);
-  background: transparent;
+  color-scheme: inherit;
+  background: var(--surface);
   outline: none;
   font-size: 0.76rem;
 }

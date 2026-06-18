@@ -443,13 +443,8 @@ onMounted(() => {
 });
 
 function readAgentConfig(): Record<string, unknown> {
-  const defaults = createDefaultAgentConfig();
-  try {
-    const saved = JSON.parse(localStorage.getItem('agentbee.agentConfig') || 'null');
-    if (isRecord(saved)) return normalizeAgentConfig(mergeAgentConfig(defaults, normalizeAgentConfig(saved)));
-  } catch {
-  }
-  return defaults;
+  localStorage.removeItem('agentbee.agentConfig');
+  return createDefaultAgentConfig();
 }
 
 function applyAgentConfig(
@@ -458,7 +453,6 @@ function applyAgentConfig(
 ) {
   const syncJson = options.syncJson ?? true;
   agentConfig.value = normalizeAgentConfig(cloneConfig(nextConfig));
-  localStorage.setItem('agentbee.agentConfig', stringifyConfig(agentConfig.value));
   if (syncJson) refreshConfigJson();
 }
 
@@ -476,25 +470,28 @@ function cloneConfig(config: Record<string, unknown>): Record<string, unknown> {
 
 function createDefaultAgentConfig(): Record<string, unknown> {
   return {
+    agent_server: {
+      host: '127.0.0.1',
+      port: 8686,
+      ping_interval: 60,
+    },
     agent_llm: {
       api_url: 'http://127.0.0.1:1234/v1',
-      api_key: 'sk-lm-:',
-      model: 'qwen3.6-35b-a3b-apex',
+      api_key: 'sk-lm-ru6XiZDE:WImxJO82hxm5L76fNcaK',
+      model: 'qwen3.6-35b-a3b-genesis-v2-apex',
       org_id: '',
       hw_hash: '',
-      provider: 'modules/agent_openai',
-      worker_name: 'procWorker',
-      timeout: 7200,
-      keep_reasons: true,
+      timeout: 600,
+      keep_reasons: false,
       params: {
-        max_tokens: 65536,
+        max_completion_tokens: 65536,
         temperature: 0.8,
         min_p: 0,
         top_p: 0.95,
         top_k: 40,
         frequency_penalty: 0,
-        presence_penalty: 1.0,
-        repetition_penalty: 1.0,
+        presence_penalty: 1,
+        repetition_penalty: 1,
         enable_thinking: false,
         stop: [
           '<|im_end|>',
@@ -507,20 +504,14 @@ function createDefaultAgentConfig(): Record<string, unknown> {
           enable_thinking: false,
         },
         thinking: {
-          type: 'disabled',
+          type: 'enable',
         },
       },
     },
-    agent_task: {
-      provider: 'tools/Memory',
-    },
-    agent_memory: {
-      provider: 'tools/Memory',
-      max_history: 50,
-    },
-    workspace_path: '',
-    sandbox_mode: true,
+    max_ctx_len: 50,
     memory_limit: '4G',
+    sandbox_mode: false,
+    workspace_path: '',
     agent_debug: 'trace',
     socket_debug: false,
   };
@@ -542,7 +533,6 @@ function normalizeAgentConfig(config: Record<string, unknown>): Record<string, u
   }
 
   delete nextConfig.agent_tools;
-  delete nextConfig.agent_server;
   if (llmConfig) delete llmConfig.work_name;
   if ('debug' in nextConfig && !('agent_debug' in nextConfig)) {
     nextConfig.agent_debug = nextConfig.debug;
@@ -554,17 +544,6 @@ function normalizeAgentConfig(config: Record<string, unknown>): Record<string, u
 
 function clonePlainRecord(config: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
-}
-
-function mergeAgentConfig(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
-  const merged: Record<string, unknown> = { ...base };
-  Object.entries(override).forEach(([key, value]) => {
-    const current = merged[key];
-    merged[key] = isRecord(current) && isRecord(value)
-      ? mergeAgentConfig(current, value)
-      : value;
-  });
-  return merged;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
