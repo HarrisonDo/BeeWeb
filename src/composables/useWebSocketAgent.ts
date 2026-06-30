@@ -34,7 +34,7 @@ interface UseWebSocketAgentOptions {
 }
 
 export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
-  const wsUrl = ref(localStorage.getItem('agentbee.lastUrl') || 'ws://127.0.0.1:8686');
+  const wsUrl = ref(localStorage.getItem('agentbee.lastUrl') || 'ws://127.0.0.127:8686');
   const connected = ref(false);
   const connecting = ref(false);
   const autoConnectPaused = ref(false);
