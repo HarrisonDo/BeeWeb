@@ -615,6 +615,12 @@ button:disabled {
   font-size: 0.8rem;
 }
 
+.settings-version {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .settings-segmented {
   display: inline-flex;
   flex: 0 0 auto;
@@ -871,6 +877,18 @@ button:disabled {
   color: var(--success);
   background: var(--success-soft);
   font-size: 0.78rem;
+}
+
+.settings-status-warning {
+  border-color: color-mix(in srgb, var(--warn) 38%, transparent);
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.settings-status-error {
+  border-color: color-mix(in srgb, var(--danger) 36%, transparent);
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .empty {

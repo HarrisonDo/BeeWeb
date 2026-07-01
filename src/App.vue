@@ -18,6 +18,7 @@ import { useI18n } from './composables/useI18n';
 import { useSessions } from './composables/useSessions';
 import { useTheme } from './composables/useTheme';
 import { useWebSocketAgent } from './composables/useWebSocketAgent';
+import { normalizeServerError } from './protocol/normalizers';
 import type { ChatMessage as AgentChatMessage, ClientAttachment, ClientSettingAct, ServerMessage } from './protocol/types';
 
 interface BasicSettings {
@@ -27,6 +28,8 @@ interface BasicSettings {
   modelName: string;
   workspacePath: string;
 }
+
+type SettingStatusTone = 'success' | 'warning' | 'error';
 
 type VisibleChatItem =
   | {
@@ -48,8 +51,10 @@ const agentConfig = ref<Record<string, unknown>>(readAgentConfig());
 const configJson = ref(JSON.stringify(agentConfig.value, null, 2));
 const configJsonError = ref('');
 const settingStatus = ref('');
+const settingStatusTone = ref<SettingStatusTone>('success');
 const availableModels = ref<string[]>([]);
 const showDebugInfo = ref(false);
+const appVersion = __APP_VERSION__;
 
 const { locale, setLocale, t } = useI18n();
 const { setTheme, theme } = useTheme();
@@ -237,7 +242,7 @@ let requestModelsAfterNextConnect = false;
 function openSettings() {
   refreshConfigJson();
   configJsonError.value = '';
-  settingStatus.value = '';
+  clearSettingStatus();
   settingsConfigRequested = false;
   currentView.value = 'settings';
   requestServerConfigIfNeeded();
@@ -330,29 +335,35 @@ function requestModels(silent = false) {
   if (silent && !agent.canSend.value) return;
   const sent = agent.sendSystemAct('getModels');
   if (!sent) return;
-  if (!silent) settingStatus.value = `${t.value.systemRequestSent}: getModels`;
+  if (!silent) setSettingStatus(`${t.value.systemRequestSent}: getModels`, 'warning');
 }
 
 function sendSettingRequest(act: ClientSettingAct, content?: unknown) {
   const sent = agent.sendSettingAct(act, content);
   if (!sent) return false;
-  settingStatus.value = `${t.value.settingRequestSent}: ${act}`;
+  setSettingStatus(`${t.value.settingRequestSent}: ${act}`, 'warning');
   return true;
 }
 
 function handleSettingMessage(act: string, content: unknown, msg: ServerMessage) {
+  const errorMessage = normalizeServerError(msg);
+  if (errorMessage) {
+    setSettingStatus(errorMessage, 'error');
+    return;
+  }
+
   const config = parseSettingConfig(content);
   if (config && (act === 'getConfig' || act === 'getDefaultConfig' || !act)) {
     configJsonError.value = '';
     applyAgentConfig(config, { syncJson: true });
-    settingStatus.value = act === 'getDefaultConfig'
+    setSettingStatus(act === 'getDefaultConfig'
       ? t.value.defaultConfigLoaded
-      : t.value.serverConfigLoaded;
+      : t.value.serverConfigLoaded);
     return;
   }
 
   if (act === 'saveConfig') {
-    settingStatus.value = t.value.serverConfigSaved;
+    setSettingStatus(t.value.serverConfigSaved);
     const shouldRefreshModels = refreshModelsAfterSave;
     const shouldReconnect = reconnectAfterSave;
     refreshModelsAfterSave = false;
@@ -366,20 +377,36 @@ function handleSettingMessage(act: string, content: unknown, msg: ServerMessage)
     return;
   }
 
-  settingStatus.value = msg.message || t.value.settingResponseReceived;
+  setSettingStatus(msg.message || t.value.settingResponseReceived);
 }
 
 function handleSystemMessage(act: string, content: unknown, msg: ServerMessage) {
+  const errorMessage = normalizeServerError(msg);
+  if (errorMessage) {
+    setSettingStatus(errorMessage, 'error');
+    return;
+  }
+
   if (act === 'getModels') {
     const models = parseModels(content);
     if (models.length) {
       availableModels.value = models;
-      settingStatus.value = `${t.value.modelsLoaded}: ${models.length}`;
+      setSettingStatus(`${t.value.modelsLoaded}: ${models.length}`);
       return;
     }
   }
 
-  settingStatus.value = msg.message || t.value.systemResponseReceived;
+  setSettingStatus(msg.message || t.value.systemResponseReceived);
+}
+
+function setSettingStatus(message: string, tone: SettingStatusTone = 'success') {
+  settingStatus.value = message;
+  settingStatusTone.value = tone;
+}
+
+function clearSettingStatus() {
+  settingStatus.value = '';
+  settingStatusTone.value = 'success';
 }
 
 function parseConfigJson(value: string): Record<string, unknown> | null {
@@ -690,6 +717,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
 
       <SettingsView
         v-else
+        :app-version="appVersion"
         :basic-settings="basicSettings"
         :connected="agent.connected.value"
         :connecting="agent.connecting.value"
@@ -698,6 +726,7 @@ function setNestedValue(source: Record<string, unknown>, path: string[], value: 
         :labels="t"
         :locale="locale"
         :setting-status="settingStatus"
+        :setting-status-tone="settingStatusTone"
         :show-debug-info="showDebugInfo"
         :theme="theme"
         :ws-url="agent.wsUrl.value"

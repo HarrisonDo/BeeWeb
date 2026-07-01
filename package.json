@@ -1,14 +1,14 @@
 {
   "name": "beeweb",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.8",
   "type": "module",
   "scripts": {
     "predev": "node scripts/check-node.cjs",
     "dev": "vite --host 127.0.0.1",
     "prebuild": "node scripts/check-node.cjs",
     "build": "vue-tsc --noEmit && vite build",
-    "build:standalone": "npm run build && node scripts/build-standalone.mjs",
+    "build:standalone": "node scripts/bump-version.mjs && npm run build && node scripts/build-standalone.mjs",
     "prepreview": "node scripts/check-node.cjs",
     "preview": "vite preview --host 127.0.0.1"
   },

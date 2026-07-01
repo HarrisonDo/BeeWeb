@@ -13,6 +13,7 @@ import {
   getMessageId,
   getServerType,
   normalizePayload,
+  normalizeServerError,
   normalizeToolEvent,
   parseServerMessage,
 } from '../protocol/normalizers';
@@ -280,11 +281,15 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
 
     if (type === 'setting') {
       const { act, content } = unwrapActContent(msg);
+      const errorMessage = normalizeServerError(msg);
+      if (errorMessage) options.addMessage('error', errorMessage);
       options.onSettingMessage?.(act, content, msg);
       return;
     }
     if (type === 'system') {
       const { act, content } = unwrapActContent(msg);
+      const errorMessage = normalizeServerError(msg);
+      if (errorMessage) options.addMessage('error', errorMessage);
       options.onSystemMessage?.(act, content, msg);
       return;
     }
@@ -294,7 +299,7 @@ export function useWebSocketAgent(options: UseWebSocketAgentOptions) {
     if (['tool_calls', 'tool_call', 'tool'].includes(type)) return appendAssistantToolEvent(messageId, 'tool_calls', msg);
     if (type === 'tool_result') return appendAssistantToolEvent(messageId, 'tool_result', msg);
     if (type === 'error') {
-      options.addMessage('error', msg.message || normalizePayload(msg) || 'Server returned an error.');
+      options.addMessage('error', normalizeServerError(msg) || normalizePayload(msg) || 'Server returned an error.');
       return finishAssistantMessage(messageId, 'error', msg);
     }
     if (['end', 'done', 'finish'].includes(type)) return finishAssistantMessage(messageId, 'done', msg);

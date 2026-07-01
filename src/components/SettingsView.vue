@@ -22,6 +22,7 @@ import {
 import { ref } from 'vue';
 
 type Locale = 'zh' | 'en';
+type StatusTone = 'success' | 'warning' | 'error';
 type Theme = 'light' | 'dark';
 
 interface BasicSettings {
@@ -33,6 +34,7 @@ interface BasicSettings {
 }
 
 defineProps<{
+  appVersion: string;
   basicSettings: BasicSettings;
   connected: boolean;
   connecting: boolean;
@@ -41,6 +43,7 @@ defineProps<{
   labels: Record<string, string>;
   locale: Locale;
   settingStatus: string;
+  settingStatusTone: StatusTone;
   showDebugInfo: boolean;
   theme: Theme;
   wsUrl: string;
@@ -141,6 +144,13 @@ const advancedExpanded = ref(false);
               <span>On</span>
             </button>
           </div>
+        </div>
+        <div class="settings-preference-row">
+          <span class="settings-preference-label">
+            <Code2 :size="14" aria-hidden="true" />
+            Version
+          </span>
+          <span class="settings-version">v{{ appVersion }}</span>
         </div>
       </div>
     </div>
@@ -260,7 +270,14 @@ const advancedExpanded = ref(false);
         </button>
       </div>
       <div v-if="configJsonError" class="settings-error" role="status">{{ configJsonError }}</div>
-      <div v-else-if="settingStatus" class="settings-status" role="status">{{ settingStatus }}</div>
+      <div
+        v-else-if="settingStatus"
+        class="settings-status"
+        :class="`settings-status-${settingStatusTone}`"
+        role="status"
+      >
+        {{ settingStatus }}
+      </div>
     </div>
 
     <div class="settings-section">

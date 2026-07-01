@@ -5,6 +5,23 @@ export function normalizePayload(msg: ServerMessage): string {
   return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
 }
 
+export function normalizeServerError(msg: ServerMessage): string {
+  const isErrorEvent = msg.status === 'error' || getServerType(msg) === 'error' || msg.error !== undefined;
+  if (!isErrorEvent) return '';
+
+  const error = asRecord(msg.error);
+  const message = asString(error.message) || asString(msg.error) || msg.message || '';
+
+  const details = [
+    asString(error.code),
+    asString(error.type),
+  ].filter(Boolean);
+  const suffix = details.length ? ` (${details.join(', ')})` : '';
+  const act = msg.act ? `${msg.act}: ` : '';
+
+  return `${act}${message || 'Server returned an error.'}${suffix}`;
+}
+
 export function getServerType(msg: ServerMessage): string {
   return String(msg.type || msg.event || msg.role || '');
 }

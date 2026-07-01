@@ -142,7 +142,9 @@ export interface ServerMessage {
   WindowName?: string;
   turnId?: string;
   requestId?: string;
+  status?: string;
   message?: string;
+  error?: unknown;
   data?: unknown;
   text?: unknown;
   content?: unknown;
